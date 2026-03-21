@@ -1,0 +1,151 @@
+/* App-specific styles */
+
+/* Orb pulse animation */
+@keyframes orb-pulse {
+  0%, 100% { 
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% { 
+    transform: scale(1.02);
+    opacity: 1;
+  }
+}
+
+/* Ensure smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Pin spacer fix for GSAP */
+.pin-spacer {
+  pointer-events: none !important;
+}
+
+.pin-spacer > * {
+  pointer-events: auto !important;
+}
+
+/* Section stacking */
+section {
+  position: relative;
+}
+
+/* Glass card hover enhancement */
+.glass-card:hover {
+  background: rgba(17, 27, 51, 0.8);
+}
+
+/* Workflow module transitions */
+.workflow-module {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.workflow-module:hover {
+  transform: scale(1.05);
+}
+
+/* Progress bar animation */
+.progress-bar-fill {
+  transition: width 0.5s ease-out;
+}
+
+/* Input focus states */
+.glass-input:focus {
+  background: rgba(5, 10, 24, 0.8);
+}
+
+/* Button press effect */
+.btn-cyan:active,
+.btn-outline:active {
+  transform: translateY(0);
+}
+
+/* Status dot pulse */
+.status-online {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Scrollbar styling for webkit browsers */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(11, 18, 38, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 240, 255, 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 240, 255, 0.5);
+}
+
+/* Selection color */
+::selection {
+  background: rgba(0, 240, 255, 0.3);
+  color: #F4F7FF;
+}
+
+/* Focus visible for accessibility */
+:focus-visible {
+  outline: 2px solid rgba(0, 240, 255, 0.5);
+  outline-offset: 2px;
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .status-online {
+    animation: none;
+  }
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 1024px) {
+  .glass-card {
+    backdrop-filter: blur(10px);
+  }
+}
+
+@media (max-width: 768px) {
+  /* Stack dashboard layout on mobile */
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  /* Hide left panel on small screens */
+  .automation-stream {
+    display: none;
+  }
+  
+  /* Full width cards */
+  .glass-card {
+    width: 100% !important;
+    max-width: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .glass-card {
+    border-color: rgba(244, 247, 255, 0.3);
+  }
+  
+  .text-silver\/60,
+  .text-silver\/70 {
+    color: rgba(244, 247, 255, 0.9);
+  }
+}
