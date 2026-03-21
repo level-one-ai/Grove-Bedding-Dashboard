@@ -140,10 +140,17 @@
   
   /* Text Glow */
   .text-glow-blue {
-    text-shadow: 
+    text-shadow:
       0 0 10px rgba(0, 150, 255, 0.6),
       0 0 20px rgba(0, 150, 255, 0.4),
       0 0 30px rgba(0, 150, 255, 0.2);
+  }
+
+  .text-glow-cyan {
+    text-shadow:
+      0 0 10px rgba(0, 200, 255, 0.6),
+      0 0 20px rgba(0, 200, 255, 0.4),
+      0 0 30px rgba(0, 200, 255, 0.2);
   }
   
   /* Progress Bar */
@@ -244,6 +251,18 @@
   .btn-outline:hover {
     background: rgba(0, 150, 255, 0.1);
     border-color: rgba(0, 150, 255, 0.6);
+  }
+
+  .btn-cyan {
+    @apply px-6 py-3 rounded-xl font-sora font-semibold text-sm transition-all duration-200;
+    background: linear-gradient(135deg, #00c8ff 0%, #0096ff 100%);
+    color: #0a1628;
+    box-shadow: 0 4px 20px rgba(0, 200, 255, 0.35);
+  }
+
+  .btn-cyan:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 30px rgba(0, 200, 255, 0.5);
   }
   
   /* Noise Overlay */
