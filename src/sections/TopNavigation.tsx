@@ -12,29 +12,18 @@ const navItems = [
 export default function TopNavigation() {
   const navRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible] = useState(true);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
       gsap.fromTo(
         navRef.current,
         { y: -20, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.8, delay: 0.5, ease: 'power2.out' }
+        { y: 0, opacity: 1, duration: 0.8, delay: 0.3, ease: 'power2.out' }
       );
     });
 
-    // Show/hide navigation on scroll
-    const handleScroll = () => {
-      const scrollY = window.scrollY;
-      setIsVisible(scrollY > 100);
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-
-    return () => {
-      ctx.revert();
-      window.removeEventListener('scroll', handleScroll);
-    };
+    return () => ctx.revert();
   }, []);
 
   const handleClick = (index: number, sectionId: string) => {

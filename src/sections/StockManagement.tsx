@@ -167,76 +167,38 @@ export default function StockManagement() {
   const [selectedItem, setSelectedItem] = useState<StockItem | null>(null);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
-  const [chartsLoading, setChartsLoading] = useState(true);
+  const [chartsLoading] = useState(false);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      // Header animation
+      // Section fade-in as it enters viewport
       gsap.fromTo(
-        '.stock-header',
-        { y: 30, opacity: 0 },
+        sectionRef.current,
+        { opacity: 0, y: 30 },
         {
-          y: 0,
           opacity: 1,
-          duration: 0.8,
-          ease: 'power2.out',
+          y: 0,
           scrollTrigger: {
             trigger: sectionRef.current,
-            start: 'top 80%',
-            toggleActions: 'play none none reverse',
+            start: 'top 90%',
+            end: 'top 20%',
+            scrub: true,
           },
         }
       );
 
-      // Stats cards animation
+      // Section fade-out as it leaves viewport
       gsap.fromTo(
-        '.stat-card',
-        { y: 40, opacity: 0, scale: 0.95 },
+        sectionRef.current,
+        { opacity: 1, y: 0 },
         {
-          y: 0,
-          opacity: 1,
-          scale: 1,
-          duration: 0.6,
-          stagger: 0.1,
-          ease: 'power2.out',
+          opacity: 0,
+          y: -30,
           scrollTrigger: {
-            trigger: '.stats-grid',
-            start: 'top 85%',
-            toggleActions: 'play none none reverse',
-          },
-        }
-      );
-
-      // Charts animation - trigger loading then reveal
-      ScrollTrigger.create({
-        trigger: '.charts-grid',
-        start: 'top 80%',
-        onEnter: () => {
-          setChartsLoading(true);
-          setTimeout(() => {
-            setChartsLoading(false);
-            gsap.fromTo(
-              '.chart-card',
-              { y: 30, opacity: 0, rotateX: 15 },
-              { y: 0, opacity: 1, rotateX: 0, duration: 0.8, stagger: 0.15, ease: 'power2.out' }
-            );
-          }, 1200);
-        },
-      });
-
-      // Table animation
-      gsap.fromTo(
-        '.stock-table',
-        { y: 40, opacity: 0 },
-        {
-          y: 0,
-          opacity: 1,
-          duration: 0.8,
-          ease: 'power2.out',
-          scrollTrigger: {
-            trigger: '.stock-table',
-            start: 'top 85%',
-            toggleActions: 'play none none reverse',
+            trigger: sectionRef.current,
+            start: 'bottom 65%',
+            end: 'bottom top',
+            scrub: true,
           },
         }
       );

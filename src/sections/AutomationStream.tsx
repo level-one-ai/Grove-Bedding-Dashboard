@@ -72,45 +72,37 @@ export default function AutomationStream() {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      // Header animation
+      // Section fade-in as it enters viewport
       gsap.fromTo(
-        '.logs-header',
-        { y: 20, opacity: 0 },
+        sectionRef.current,
+        { opacity: 0, y: 30 },
         {
-          y: 0,
           opacity: 1,
-          duration: 0.6,
-          ease: 'power2.out',
+          y: 0,
           scrollTrigger: {
             trigger: sectionRef.current,
-            start: 'top 85%',
-            toggleActions: 'play none none reverse',
+            start: 'top 90%',
+            end: 'top 20%',
+            scrub: true,
           },
         }
       );
 
-      // Row animations
-      const rows = sectionRef.current?.querySelectorAll('.log-row');
-      if (rows) {
-        rows.forEach((row, idx) => {
-          gsap.fromTo(
-            row,
-            { x: -20, opacity: 0 },
-            {
-              x: 0,
-              opacity: 1,
-              duration: 0.4,
-              delay: idx * 0.05,
-              ease: 'power2.out',
-              scrollTrigger: {
-                trigger: row,
-                start: 'top 90%',
-                toggleActions: 'play none none reverse',
-              },
-            }
-          );
-        });
-      }
+      // Section fade-out as it leaves viewport
+      gsap.fromTo(
+        sectionRef.current,
+        { opacity: 1, y: 0 },
+        {
+          opacity: 0,
+          y: -30,
+          scrollTrigger: {
+            trigger: sectionRef.current,
+            start: 'bottom 65%',
+            end: 'bottom top',
+            scrub: true,
+          },
+        }
+      );
     }, sectionRef);
 
     // Check for failed automations and show notifications

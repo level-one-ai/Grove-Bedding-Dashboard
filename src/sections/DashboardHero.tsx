@@ -53,48 +53,15 @@ export default function DashboardHero() {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      // Auto-play entrance animation
-      const tl = gsap.timeline({ delay: 0.5 });
-
-      // Orb entrance
-      tl.fromTo(
-        orbRef.current,
-        { scale: 0.7, opacity: 0 },
-        { scale: 1, opacity: 1, duration: 1.2, ease: 'power3.out' },
-        0
-      );
-
-      // Left panel cards entrance
       const leftCards = leftPanelRef.current?.querySelectorAll('.automation-card');
-      if (leftCards) {
-        tl.fromTo(
-          leftCards,
-          { x: '-10vw', opacity: 0 },
-          { x: 0, opacity: 1, duration: 0.8, stagger: 0.08, ease: 'power2.out' },
-          0.2
-        );
-      }
-
-      // Right panel entrance
-      tl.fromTo(
-        rightPanelRef.current,
-        { x: '10vw', opacity: 0 },
-        { x: 0, opacity: 1, duration: 0.8, ease: 'power2.out' },
-        0.3
-      );
-
-      // Metrics entrance
       const metrics = metricsRef.current?.querySelectorAll('.metric-item');
-      if (metrics) {
-        tl.fromTo(
-          metrics,
-          { y: 20, opacity: 0 },
-          { y: 0, opacity: 1, duration: 0.5, stagger: 0.1, ease: 'power2.out' },
-          0.6
-        );
-      }
 
-      // Scroll-driven animation (pinned) — single unified timeline
+      // Set initial visible state so elements show correctly at page load
+      gsap.set([orbRef.current, rightPanelRef.current], { opacity: 1, scale: 1, x: 0, y: 0 });
+      if (leftCards) gsap.set(leftCards, { opacity: 1, x: 0 });
+      if (metrics) gsap.set(metrics, { opacity: 1, y: 0 });
+
+      // Scroll-driven animation (pinned) — single unified timeline, fully bidirectional via scrub
       const scrollTl = gsap.timeline({
         scrollTrigger: {
           trigger: sectionRef.current,
@@ -106,7 +73,7 @@ export default function DashboardHero() {
         },
       });
 
-      // Features fade out (0% – 60%)
+      // Features fade out (0% – 100%)
       if (leftCards) {
         scrollTl.fromTo(
           leftCards,
@@ -132,7 +99,7 @@ export default function DashboardHero() {
         );
       }
 
-      // Orb zooms in (0% – 80%) then fades out (50% – 100%)
+      // Orb zooms then fades out
       scrollTl.fromTo(
         orbRef.current,
         { scale: 1 },

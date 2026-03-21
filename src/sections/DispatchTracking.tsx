@@ -157,37 +157,34 @@ export default function DispatchTracking() {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      // Header animation
+      // Section fade-in as it enters viewport
       gsap.fromTo(
-        '.dispatch-header',
-        { y: 30, opacity: 0 },
+        sectionRef.current,
+        { opacity: 0, y: 30 },
         {
-          y: 0,
           opacity: 1,
-          duration: 0.8,
-          ease: 'power2.out',
+          y: 0,
           scrollTrigger: {
             trigger: sectionRef.current,
-            start: 'top 80%',
-            toggleActions: 'play none none reverse',
+            start: 'top 90%',
+            end: 'top 20%',
+            scrub: true,
           },
         }
       );
 
-      // Cards animation
+      // Section fade-out as it leaves viewport
       gsap.fromTo(
-        '.dispatch-card',
-        { y: 40, opacity: 0 },
+        sectionRef.current,
+        { opacity: 1, y: 0 },
         {
-          y: 0,
-          opacity: 1,
-          duration: 0.6,
-          stagger: 0.1,
-          ease: 'power2.out',
+          opacity: 0,
+          y: -30,
           scrollTrigger: {
-            trigger: '.dispatch-grid',
-            start: 'top 80%',
-            toggleActions: 'play none none reverse',
+            trigger: sectionRef.current,
+            start: 'bottom 65%',
+            end: 'bottom top',
+            scrub: true,
           },
         }
       );

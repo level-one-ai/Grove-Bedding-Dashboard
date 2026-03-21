@@ -7,11 +7,8 @@ import Header from './sections/Header';
 import TopNavigation from './sections/TopNavigation';
 import DashboardHero from './sections/DashboardHero';
 import StockManagement from './sections/StockManagement';
-import WarehouseBridge from './sections/WarehouseBridge';
 import AutomationStream from './sections/AutomationStream';
 import DispatchTracking from './sections/DispatchTracking';
-import ContactPanel from './sections/ContactPanel';
-import Footer from './sections/Footer';
 
 function App() {
 
@@ -44,29 +41,16 @@ function App() {
           <StockManagement />
         </section>
 
-        {/* Section 3: Warehouse Bridge - pin: true */}
-        <section id="warehouse" className="relative z-30 overflow-hidden">
-          <WarehouseBridge />
-        </section>
-
-        {/* Section 4: Automation Stream */}
-        <section id="logs" className="relative z-40 overflow-hidden">
+        {/* Section 3: Automation Stream */}
+        <section id="logs" className="relative z-30 overflow-hidden">
           <AutomationStream />
         </section>
 
-        {/* Section 5: Dispatch Tracking */}
-        <section id="dispatch" className="relative z-50 overflow-hidden">
+        {/* Section 4: Dispatch Tracking */}
+        <section id="dispatch" className="relative z-40 overflow-hidden">
           <DispatchTracking />
         </section>
-
-        {/* Section 6: Contact Panel - pin: true */}
-        <section id="contact" className="relative z-[60] overflow-hidden">
-          <ContactPanel />
-        </section>
       </main>
-
-      {/* Footer */}
-      <Footer />
     </div>
   );
 }
