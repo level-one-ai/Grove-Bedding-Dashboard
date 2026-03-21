@@ -28,7 +28,8 @@ export default function ContactPanel() {
           start: 'top top',
           end: '+=120%',
           pin: true,
-          scrub: 0.3,
+          scrub: true,
+          anticipatePin: 1,
         },
       });
 

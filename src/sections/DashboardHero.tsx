@@ -101,7 +101,8 @@ export default function DashboardHero() {
           start: 'top top',
           end: '+=100%',
           pin: true,
-          scrub: 0.3,
+          scrub: true,
+          anticipatePin: 1,
         },
       });
 
@@ -272,34 +273,18 @@ export default function DashboardHero() {
               height: 'min(38vw, 480px)',
             }}
           >
-            {/* Outer Glow Rings */}
-            <div 
-              className="absolute inset-0 rounded-full"
-              style={{
-                border: '2px solid rgba(0, 150, 255, 0.2)',
-                animation: 'spin-slow 20s linear infinite',
-              }}
-            />
-            <div 
-              className="absolute inset-4 rounded-full"
-              style={{
-                border: '1px solid rgba(0, 200, 255, 0.15)',
-                animation: 'spin-slow 15s linear infinite reverse',
-              }}
-            />
-            
             {/* Orb Glow */}
-            <div 
-              className="absolute inset-0 rounded-full"
+            <div
+              className="absolute inset-0 rounded-full pointer-events-none"
               style={{
                 background: 'radial-gradient(circle, rgba(0, 150, 255, 0.2) 0%, transparent 60%)',
                 filter: 'blur(40px)',
-                animation: 'pulse-glow 4s ease-in-out infinite',
               }}
             />
-            
+
             {/* Orb Image */}
-            <div className="relative w-full h-full rounded-full overflow-hidden border-2 border-blue/30 glow-blue"
+            <div
+              className="relative w-full h-full rounded-full overflow-hidden border-2 border-blue/30 glow-blue"
               style={{
                 boxShadow: '0 0 60px rgba(0, 150, 255, 0.3), inset 0 0 40px rgba(0, 150, 255, 0.1)',
               }}
@@ -308,47 +293,8 @@ export default function DashboardHero() {
                 src="/orb-visual-new.jpg"
                 alt="Sync Orb"
                 className="w-full h-full object-cover"
-                style={{
-                  animation: 'orb-pulse 4s ease-in-out infinite',
-                }}
               />
-              
-              {/* Holographic overlay */}
-              <div className="absolute inset-0 holographic rounded-full" />
             </div>
-
-            {/* Orb Particles (SVG) */}
-            <svg 
-              className="absolute inset-0 w-full h-full pointer-events-none"
-              viewBox="0 0 200 200"
-            >
-              <defs>
-                <linearGradient id="particleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#0096ff" stopOpacity="0.6" />
-                  <stop offset="100%" stopColor="#00c8ff" stopOpacity="0.2" />
-                </linearGradient>
-              </defs>
-              <circle cx="100" cy="100" r="85" fill="none" stroke="url(#particleGrad)" strokeWidth="0.5" opacity="0.4">
-                <animateTransform
-                  attributeName="transform"
-                  type="rotate"
-                  from="0 100 100"
-                  to="360 100 100"
-                  dur="25s"
-                  repeatCount="indefinite"
-                />
-              </circle>
-              <circle cx="100" cy="100" r="70" fill="none" stroke="url(#particleGrad)" strokeWidth="0.3" opacity="0.3">
-                <animateTransform
-                  attributeName="transform"
-                  type="rotate"
-                  from="360 100 100"
-                  to="0 100 100"
-                  dur="18s"
-                  repeatCount="indefinite"
-                />
-              </circle>
-            </svg>
           </div>
 
           {/* Orb Label */}
