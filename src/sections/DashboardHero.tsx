@@ -56,12 +56,12 @@ export default function DashboardHero() {
       const leftCards = leftPanelRef.current?.querySelectorAll('.automation-card');
       const metrics = metricsRef.current?.querySelectorAll('.metric-item');
 
-      // Set initial visible state so elements show correctly at page load
-      gsap.set([orbRef.current, rightPanelRef.current], { opacity: 1, scale: 1, x: 0, y: 0 });
-      if (leftCards) gsap.set(leftCards, { opacity: 1, x: 0 });
-      if (metrics) gsap.set(metrics, { opacity: 1, y: 0 });
+      // Set initial visible state
+      gsap.set([orbRef.current, rightPanelRef.current], { opacity: 1, scale: 1 });
+      if (leftCards) gsap.set(leftCards, { opacity: 1 });
+      if (metrics) gsap.set(metrics, { opacity: 1 });
 
-      // Scroll-driven animation (pinned) — single unified timeline, fully bidirectional via scrub
+      // Scroll-driven animation (pinned) — fully bidirectional via scrub
       const scrollTl = gsap.timeline({
         scrollTrigger: {
           trigger: sectionRef.current,
@@ -73,28 +73,28 @@ export default function DashboardHero() {
         },
       });
 
-      // Features fade out (0% – 100%)
+      // Features fade out in place (no movement)
       if (leftCards) {
         scrollTl.fromTo(
           leftCards,
-          { x: 0, opacity: 1 },
-          { x: '-10vw', opacity: 0, stagger: 0.02, ease: 'power1.in' },
+          { opacity: 1 },
+          { opacity: 0, stagger: 0.02, ease: 'power1.in' },
           0
         );
       }
 
       scrollTl.fromTo(
         rightPanelRef.current,
-        { x: 0, opacity: 1 },
-        { x: '10vw', opacity: 0, ease: 'power1.in' },
+        { opacity: 1 },
+        { opacity: 0, ease: 'power1.in' },
         0
       );
 
       if (metrics) {
         scrollTl.fromTo(
           metrics,
-          { y: 0, opacity: 1 },
-          { y: 20, opacity: 0, stagger: 0.02, ease: 'power1.in' },
+          { opacity: 1 },
+          { opacity: 0, stagger: 0.02, ease: 'power1.in' },
           0
         );
       }
