@@ -28,7 +28,7 @@ export default function ContactPanel() {
           start: 'top top',
           end: '+=120%',
           pin: true,
-          scrub: 0.6,
+          scrub: 0.3,
         },
       });
 

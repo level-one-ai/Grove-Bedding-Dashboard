@@ -133,9 +133,6 @@ function HolographicChart({
 }) {
   return (
     <div className={`stock-card glass-card p-5 relative overflow-hidden ${className}`}>
-      {/* Holographic overlay */}
-      <div className="absolute inset-0 holographic pointer-events-none" />
-      
       {/* Loading overlay */}
       {isLoading && (
         <div className="absolute inset-0 bg-navy-900/80 backdrop-blur-sm z-20 flex flex-col items-center justify-center">
@@ -330,7 +327,7 @@ export default function StockManagement() {
 
         {/* Stats Overview */}
         <div className="stats-grid grid grid-cols-4 gap-4 mb-8">
-          <div className="stat-card glass-card p-5 holographic relative overflow-hidden group hover:border-blue/40 transition-all duration-300">
+          <div className="stat-card glass-card p-5 relative overflow-hidden group hover:border-blue/40 transition-all duration-300">
             <div className="absolute inset-0 bg-gradient-to-br from-blue/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="flex items-center justify-between mb-3 relative z-10">
               <Package className="w-5 h-5 text-blue" />
@@ -342,7 +339,7 @@ export default function StockManagement() {
             <p className="font-inter text-xs text-silver/60 mt-1 relative z-10">Total Units</p>
           </div>
 
-          <div className="stat-card glass-card p-5 holographic relative overflow-hidden group hover:border-magenta/40 transition-all duration-300">
+          <div className="stat-card glass-card p-5 relative overflow-hidden group hover:border-magenta/40 transition-all duration-300">
             <div className="absolute inset-0 bg-gradient-to-br from-magenta/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="flex items-center justify-between mb-3 relative z-10">
               <AlertTriangle className="w-5 h-5 text-magenta" />
@@ -352,7 +349,7 @@ export default function StockManagement() {
             <p className="font-inter text-xs text-silver/60 mt-1 relative z-10">Low Stock Items</p>
           </div>
 
-          <div className="stat-card glass-card p-5 holographic relative overflow-hidden group hover:border-emerald/40 transition-all duration-300">
+          <div className="stat-card glass-card p-5 relative overflow-hidden group hover:border-emerald/40 transition-all duration-300">
             <div className="absolute inset-0 bg-gradient-to-br from-emerald/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="flex items-center justify-between mb-3 relative z-10">
               <TrendingUp className="w-5 h-5 text-emerald" />
@@ -362,7 +359,7 @@ export default function StockManagement() {
             <p className="font-inter text-xs text-silver/60 mt-1 relative z-10">Avg Stock Level</p>
           </div>
 
-          <div className="stat-card glass-card p-5 holographic relative overflow-hidden group hover:border-purple/40 transition-all duration-300">
+          <div className="stat-card glass-card p-5 relative overflow-hidden group hover:border-purple/40 transition-all duration-300">
             <div className="absolute inset-0 bg-gradient-to-br from-purple/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="flex items-center justify-between mb-3 relative z-10">
               <ShoppingCart className="w-5 h-5 text-purple-400" />
@@ -459,7 +456,7 @@ export default function StockManagement() {
         </div>
 
         {/* Stock Items Table */}
-        <div className="stock-table glass-card p-5 holographic relative overflow-hidden">
+        <div className="stock-table glass-card p-5 relative overflow-hidden">
           {/* Corner accents */}
           <div className="absolute top-0 left-0 w-6 h-6 border-l-2 border-t-2 border-blue/40 rounded-tl-xl" />
           <div className="absolute top-0 right-0 w-6 h-6 border-r-2 border-t-2 border-blue/40 rounded-tr-xl" />

@@ -6,7 +6,6 @@ import './App.css';
 // Import sections
 import Header from './sections/Header';
 import TopNavigation from './sections/TopNavigation';
-import FloatingNav from './sections/FloatingNav';
 import DashboardHero from './sections/DashboardHero';
 import StockManagement from './sections/StockManagement';
 import WarehouseBridge from './sections/WarehouseBridge';
@@ -77,9 +76,6 @@ function App() {
 
       {/* Top Navigation */}
       <TopNavigation />
-
-      {/* Floating Bottom Navigation */}
-      <FloatingNav />
 
       {/* Main Content */}
       <main className="relative pt-16">

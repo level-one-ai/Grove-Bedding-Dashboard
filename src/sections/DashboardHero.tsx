@@ -56,11 +56,11 @@ export default function DashboardHero() {
       // Auto-play entrance animation
       const tl = gsap.timeline({ delay: 0.5 });
 
-      // Orb entrance with rotation
+      // Orb entrance
       tl.fromTo(
         orbRef.current,
-        { scale: 0.7, opacity: 0, rotateY: -30 },
-        { scale: 1, opacity: 1, rotateY: 0, duration: 1.2, ease: 'power3.out' },
+        { scale: 0.7, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 1.2, ease: 'power3.out' },
         0
       );
 
@@ -69,8 +69,8 @@ export default function DashboardHero() {
       if (leftCards) {
         tl.fromTo(
           leftCards,
-          { x: '-10vw', opacity: 0, rotateY: 15 },
-          { x: 0, opacity: 1, rotateY: 0, duration: 0.8, stagger: 0.08, ease: 'power2.out' },
+          { x: '-10vw', opacity: 0 },
+          { x: 0, opacity: 1, duration: 0.8, stagger: 0.08, ease: 'power2.out' },
           0.2
         );
       }
@@ -94,54 +94,56 @@ export default function DashboardHero() {
         );
       }
 
-      // Orb continuous rotation
-      gsap.to(orbRef.current, {
-        rotateY: 360,
-        duration: 30,
-        repeat: -1,
-        ease: 'none',
-      });
-
-      // Scroll-driven animation (pinned)
+      // Scroll-driven animation (pinned) — single unified timeline
       const scrollTl = gsap.timeline({
         scrollTrigger: {
           trigger: sectionRef.current,
           start: 'top top',
-          end: '+=130%',
+          end: '+=100%',
           pin: true,
-          scrub: 0.6,
-          onLeaveBack: () => {
-            gsap.set(orbRef.current, { scale: 1, opacity: 1 });
-            if (leftCards && leftCards.length > 0) {
-              gsap.set(leftCards, { x: 0, opacity: 1 });
-            }
-            gsap.set(rightPanelRef.current, { x: 0, opacity: 1 });
-          },
+          scrub: 0.3,
         },
       });
 
-      // EXIT (70% - 100%)
-      scrollTl.fromTo(
-        orbRef.current,
-        { scale: 1, opacity: 1 },
-        { scale: 1.15, opacity: 0.3, ease: 'power2.in' },
-        0.7
-      );
-
+      // Features fade out (0% – 60%)
       if (leftCards) {
         scrollTl.fromTo(
           leftCards,
           { x: 0, opacity: 1 },
-          { x: '-12vw', opacity: 0.2, stagger: 0.02, ease: 'power2.in' },
-          0.7
+          { x: '-10vw', opacity: 0, stagger: 0.02, ease: 'power1.in' },
+          0
         );
       }
 
       scrollTl.fromTo(
         rightPanelRef.current,
         { x: 0, opacity: 1 },
-        { x: '12vw', opacity: 0.2, ease: 'power2.in' },
-        0.7
+        { x: '10vw', opacity: 0, ease: 'power1.in' },
+        0
+      );
+
+      if (metrics) {
+        scrollTl.fromTo(
+          metrics,
+          { y: 0, opacity: 1 },
+          { y: 20, opacity: 0, stagger: 0.02, ease: 'power1.in' },
+          0
+        );
+      }
+
+      // Orb zooms in (0% – 80%) then fades out (50% – 100%)
+      scrollTl.fromTo(
+        orbRef.current,
+        { scale: 1 },
+        { scale: 1.4, ease: 'power1.in' },
+        0
+      );
+
+      scrollTl.fromTo(
+        orbRef.current,
+        { opacity: 1 },
+        { opacity: 0, ease: 'power2.in' },
+        0.5
       );
     }, sectionRef);
 
@@ -268,8 +270,6 @@ export default function DashboardHero() {
             style={{
               width: 'min(38vw, 480px)',
               height: 'min(38vw, 480px)',
-              transformStyle: 'preserve-3d',
-              perspective: '1000px',
             }}
           >
             {/* Outer Glow Rings */}
