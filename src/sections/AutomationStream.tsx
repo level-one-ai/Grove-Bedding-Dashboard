@@ -1,10 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { CheckCircle2, XCircle, ExternalLink, Webhook, Brain, Truck, Printer, X, AlertTriangle, Clock, type LucideIcon } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-
-gsap.registerPlugin(ScrollTrigger);
 
 interface LogEntry {
   time: string;
@@ -72,36 +69,10 @@ export default function AutomationStream() {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      // Section fade-in as it enters viewport
       gsap.fromTo(
         sectionRef.current,
-        { opacity: 0, y: 30 },
-        {
-          opacity: 1,
-          y: 0,
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: 'top 90%',
-            end: 'top 20%',
-            scrub: true,
-          },
-        }
-      );
-
-      // Section fade-out as it leaves viewport
-      gsap.fromTo(
-        sectionRef.current,
-        { opacity: 1, y: 0 },
-        {
-          opacity: 0,
-          y: -30,
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: 'bottom 65%',
-            end: 'bottom top',
-            scrub: true,
-          },
-        }
+        { opacity: 0, y: 12 },
+        { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }
       );
     }, sectionRef);
 
@@ -158,7 +129,7 @@ export default function AutomationStream() {
     <div
       id="logs"
       ref={sectionRef}
-      className="relative w-full py-12"
+      className="relative w-full h-full overflow-hidden"
       style={{
         background: 'linear-gradient(180deg, #0a1628 0%, #0d1e36 100%)',
       }}
@@ -197,16 +168,16 @@ export default function AutomationStream() {
         }}
       />
 
-      <div className="relative z-10 max-w-5xl mx-auto px-8">
+      <div className="relative z-10 h-full flex flex-col max-w-5xl mx-auto px-8 py-4">
         {/* Header */}
-        <div className="logs-header mb-6 flex items-center justify-between">
+        <div className="logs-header mb-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-blue/10 border border-blue/30 flex items-center justify-center">
               <Clock className="w-4 h-4 text-blue" />
             </div>
             <div>
-              <h2 className="font-sora font-bold text-lg text-white tracking-tight-custom">
-                Automation Stream
+              <h2 className="font-sora font-bold text-xl text-white tracking-tight-custom">
+                Automation
               </h2>
               <p className="font-inter text-xs text-silver/60">
                 Click any entry to view workflow
@@ -219,8 +190,8 @@ export default function AutomationStream() {
           </div>
         </div>
 
-        {/* Log List - Compact */}
-        <div className="grid grid-cols-2 gap-2">
+        {/* Log List - Compact 2-col grid filling remaining height */}
+        <div className="grid grid-cols-2 gap-2 overflow-y-auto flex-1 content-start">
           {logEntries.map((entry, index) => (
             <div
               key={index}

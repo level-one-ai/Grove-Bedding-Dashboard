@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { 
-  PieChart, 
-  Pie, 
-  Cell, 
-  ResponsiveContainer, 
-  BarChart, 
-  Bar, 
-  XAxis, 
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
   YAxis,
   Tooltip,
   CartesianGrid,
@@ -17,8 +16,6 @@ import {
 } from 'recharts';
 import { Package, AlertTriangle, ShoppingCart, TrendingUp, Warehouse } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-
-gsap.registerPlugin(ScrollTrigger);
 
 // Stock data with reorder thresholds
 const stockItems = [
@@ -132,7 +129,7 @@ function HolographicChart({
   className?: string;
 }) {
   return (
-    <div className={`stock-card glass-card p-5 relative overflow-hidden ${className}`}>
+    <div className={`stock-card glass-card p-3 relative overflow-hidden ${className}`}>
       {/* Loading overlay */}
       {isLoading && (
         <div className="absolute inset-0 bg-navy-900/80 backdrop-blur-sm z-20 flex flex-col items-center justify-center">
@@ -150,12 +147,12 @@ function HolographicChart({
       <div className="absolute bottom-0 left-0 w-4 h-4 border-l-2 border-b-2 border-blue/40 rounded-bl-lg" />
       <div className="absolute bottom-0 right-0 w-4 h-4 border-r-2 border-b-2 border-blue/40 rounded-br-lg" />
       
-      <h3 className="font-sora font-semibold text-sm text-white mb-4 relative z-10 flex items-center gap-2">
+      <h3 className="font-sora font-semibold text-xs text-white mb-2 relative z-10 flex items-center gap-2">
         <span className="w-1.5 h-1.5 rounded-full bg-blue animate-pulse" />
         {title}
       </h3>
-      
-      <div className="relative z-10" style={{ height: '200px' }}>
+
+      <div className="relative z-10" style={{ height: '130px' }}>
         {children}
       </div>
     </div>
@@ -171,36 +168,10 @@ export default function StockManagement() {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      // Section fade-in as it enters viewport
       gsap.fromTo(
         sectionRef.current,
-        { opacity: 0, y: 30 },
-        {
-          opacity: 1,
-          y: 0,
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: 'top 90%',
-            end: 'top 20%',
-            scrub: true,
-          },
-        }
-      );
-
-      // Section fade-out as it leaves viewport
-      gsap.fromTo(
-        sectionRef.current,
-        { opacity: 1, y: 0 },
-        {
-          opacity: 0,
-          y: -30,
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: 'bottom 65%',
-            end: 'bottom top',
-            scrub: true,
-          },
-        }
+        { opacity: 0, y: 12 },
+        { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }
       );
     }, sectionRef);
 
@@ -234,7 +205,7 @@ export default function StockManagement() {
     <div
       id="stock"
       ref={sectionRef}
-      className="relative w-full min-h-screen py-16"
+      className="relative w-full h-full overflow-hidden flex flex-col"
       style={{
         background: 'linear-gradient(180deg, #0a1628 0%, #0d1e36 50%, #0a1628 100%)',
       }}
@@ -269,71 +240,69 @@ export default function StockManagement() {
         ))}
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-8">
+      <div className="relative z-10 flex-1 flex flex-col max-w-7xl w-full mx-auto px-6 py-4 overflow-hidden">
         {/* Header */}
-        <div className="stock-header mb-8">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-12 h-12 rounded-xl bg-blue/10 border border-blue/30 flex items-center justify-center glow-blue">
-              <Warehouse className="w-6 h-6 text-blue" />
-            </div>
-            <div>
-              <h2 className="font-sora font-bold text-2xl text-white tracking-tight-custom text-glow-blue">
-                Stock Management
-              </h2>
-              <p className="font-inter text-sm text-silver/60">
-                Real-time inventory tracking with automated reorder alerts
-              </p>
-            </div>
+        <div className="stock-header mb-3 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-blue/10 border border-blue/30 flex items-center justify-center glow-blue">
+            <Warehouse className="w-5 h-5 text-blue" />
+          </div>
+          <div>
+            <h2 className="font-sora font-bold text-xl text-white tracking-tight-custom text-glow-blue">
+              Inventory
+            </h2>
+            <p className="font-inter text-xs text-silver/60">
+              Real-time stock tracking with automated reorder alerts
+            </p>
           </div>
         </div>
 
         {/* Stats Overview */}
-        <div className="stats-grid grid grid-cols-4 gap-4 mb-8">
-          <div className="stat-card glass-card p-5 relative overflow-hidden group hover:border-blue/40 transition-all duration-300">
+        <div className="stats-grid grid grid-cols-4 gap-3 mb-3">
+          <div className="stat-card glass-card p-3 relative overflow-hidden group hover:border-blue/40 transition-all duration-300">
             <div className="absolute inset-0 bg-gradient-to-br from-blue/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="flex items-center justify-between mb-3 relative z-10">
-              <Package className="w-5 h-5 text-blue" />
-              <span className="font-mono text-xs text-emerald flex items-center gap-1">
+            <div className="flex items-center justify-between mb-2 relative z-10">
+              <Package className="w-4 h-4 text-blue" />
+              <span className="font-mono text-[10px] text-emerald flex items-center gap-1">
                 <TrendingUp className="w-3 h-3" /> +12%
               </span>
             </div>
-            <p className="font-sora font-bold text-2xl text-white relative z-10">397</p>
-            <p className="font-inter text-xs text-silver/60 mt-1 relative z-10">Total Units</p>
+            <p className="font-sora font-bold text-xl text-white relative z-10">397</p>
+            <p className="font-inter text-xs text-silver/60 mt-0.5 relative z-10">Total Units</p>
           </div>
 
-          <div className="stat-card glass-card p-5 relative overflow-hidden group hover:border-magenta/40 transition-all duration-300">
+          <div className="stat-card glass-card p-3 relative overflow-hidden group hover:border-magenta/40 transition-all duration-300">
             <div className="absolute inset-0 bg-gradient-to-br from-magenta/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="flex items-center justify-between mb-3 relative z-10">
-              <AlertTriangle className="w-5 h-5 text-magenta" />
-              <span className="font-mono text-xs text-magenta">Action Needed</span>
+            <div className="flex items-center justify-between mb-2 relative z-10">
+              <AlertTriangle className="w-4 h-4 text-magenta" />
+              <span className="font-mono text-[10px] text-magenta">Action Needed</span>
             </div>
-            <p className="font-sora font-bold text-2xl text-white relative z-10">2</p>
-            <p className="font-inter text-xs text-silver/60 mt-1 relative z-10">Low Stock Items</p>
+            <p className="font-sora font-bold text-xl text-white relative z-10">2</p>
+            <p className="font-inter text-xs text-silver/60 mt-0.5 relative z-10">Low Stock Items</p>
           </div>
 
-          <div className="stat-card glass-card p-5 relative overflow-hidden group hover:border-emerald/40 transition-all duration-300">
+          <div className="stat-card glass-card p-3 relative overflow-hidden group hover:border-emerald/40 transition-all duration-300">
             <div className="absolute inset-0 bg-gradient-to-br from-emerald/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="flex items-center justify-between mb-3 relative z-10">
-              <TrendingUp className="w-5 h-5 text-emerald" />
-              <span className="font-mono text-xs text-emerald">Healthy</span>
+            <div className="flex items-center justify-between mb-2 relative z-10">
+              <TrendingUp className="w-4 h-4 text-emerald" />
+              <span className="font-mono text-[10px] text-emerald">Healthy</span>
             </div>
-            <p className="font-sora font-bold text-2xl text-white relative z-10">68%</p>
-            <p className="font-inter text-xs text-silver/60 mt-1 relative z-10">Avg Stock Level</p>
+            <p className="font-sora font-bold text-xl text-white relative z-10">68%</p>
+            <p className="font-inter text-xs text-silver/60 mt-0.5 relative z-10">Avg Stock Level</p>
           </div>
 
-          <div className="stat-card glass-card p-5 relative overflow-hidden group hover:border-purple/40 transition-all duration-300">
+          <div className="stat-card glass-card p-3 relative overflow-hidden group hover:border-purple/40 transition-all duration-300">
             <div className="absolute inset-0 bg-gradient-to-br from-purple/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="flex items-center justify-between mb-3 relative z-10">
-              <ShoppingCart className="w-5 h-5 text-purple-400" />
-              <span className="font-mono text-xs text-purple-400">Pending</span>
+            <div className="flex items-center justify-between mb-2 relative z-10">
+              <ShoppingCart className="w-4 h-4 text-purple-400" />
+              <span className="font-mono text-[10px] text-purple-400">Pending</span>
             </div>
-            <p className="font-sora font-bold text-2xl text-white relative z-10">3</p>
-            <p className="font-inter text-xs text-silver/60 mt-1 relative z-10">Open Orders</p>
+            <p className="font-sora font-bold text-xl text-white relative z-10">3</p>
+            <p className="font-inter text-xs text-silver/60 mt-0.5 relative z-10">Open Orders</p>
           </div>
         </div>
 
         {/* Charts Row */}
-        <div className="charts-grid grid grid-cols-3 gap-6 mb-8">
+        <div className="charts-grid grid grid-cols-3 gap-3 mb-3">
           {/* 3D Pie Chart - Category Distribution */}
           <HolographicChart title="Stock by Category" isLoading={chartsLoading} className="chart-card">
             <PieChart3D data={categoryData} isLoading={chartsLoading} />
@@ -418,68 +387,68 @@ export default function StockManagement() {
         </div>
 
         {/* Stock Items Table */}
-        <div className="stock-table glass-card p-5 relative overflow-hidden">
+        <div className="stock-table glass-card p-3 relative flex flex-col flex-1 min-h-0">
           {/* Corner accents */}
-          <div className="absolute top-0 left-0 w-6 h-6 border-l-2 border-t-2 border-blue/40 rounded-tl-xl" />
-          <div className="absolute top-0 right-0 w-6 h-6 border-r-2 border-t-2 border-blue/40 rounded-tr-xl" />
-          <div className="absolute bottom-0 left-0 w-6 h-6 border-l-2 border-b-2 border-blue/40 rounded-bl-xl" />
-          <div className="absolute bottom-0 right-0 w-6 h-6 border-r-2 border-b-2 border-blue/40 rounded-br-xl" />
-          
-          <h3 className="font-sora font-semibold text-sm text-white mb-4 flex items-center gap-2">
+          <div className="absolute top-0 left-0 w-5 h-5 border-l-2 border-t-2 border-blue/40 rounded-tl-xl" />
+          <div className="absolute top-0 right-0 w-5 h-5 border-r-2 border-t-2 border-blue/40 rounded-tr-xl" />
+          <div className="absolute bottom-0 left-0 w-5 h-5 border-l-2 border-b-2 border-blue/40 rounded-bl-xl" />
+          <div className="absolute bottom-0 right-0 w-5 h-5 border-r-2 border-b-2 border-blue/40 rounded-br-xl" />
+
+          <h3 className="font-sora font-semibold text-xs text-white mb-2 flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-blue animate-pulse" />
             Inventory Items
           </h3>
-          <div className="overflow-x-auto">
+          <div className="overflow-y-auto flex-1">
             <table className="w-full">
-              <thead>
+              <thead className="sticky top-0 bg-navy-900/80 backdrop-blur-sm">
                 <tr className="border-b border-white/10">
-                  <th className="text-left py-3 px-4 font-mono text-[10px] text-silver/50 uppercase tracking-wide">SKU</th>
-                  <th className="text-left py-3 px-4 font-mono text-[10px] text-silver/50 uppercase tracking-wide">Product</th>
-                  <th className="text-left py-3 px-4 font-mono text-[10px] text-silver/50 uppercase tracking-wide">Category</th>
-                  <th className="text-left py-3 px-4 font-mono text-[10px] text-silver/50 uppercase tracking-wide">Stock Level</th>
-                  <th className="text-left py-3 px-4 font-mono text-[10px] text-silver/50 uppercase tracking-wide">Status</th>
-                  <th className="text-left py-3 px-4 font-mono text-[10px] text-silver/50 uppercase tracking-wide">Action</th>
+                  <th className="text-left py-2 px-3 font-mono text-[10px] text-silver/50 uppercase tracking-wide">SKU</th>
+                  <th className="text-left py-2 px-3 font-mono text-[10px] text-silver/50 uppercase tracking-wide">Product</th>
+                  <th className="text-left py-2 px-3 font-mono text-[10px] text-silver/50 uppercase tracking-wide">Category</th>
+                  <th className="text-left py-2 px-3 font-mono text-[10px] text-silver/50 uppercase tracking-wide">Stock Level</th>
+                  <th className="text-left py-2 px-3 font-mono text-[10px] text-silver/50 uppercase tracking-wide">Status</th>
+                  <th className="text-left py-2 px-3 font-mono text-[10px] text-silver/50 uppercase tracking-wide">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {stockItems.map((item, index) => {
                   const percentage = getStockPercentage(item.current, item.max);
                   const status = getStockStatus(item.current, item.reorderAt);
-                  
+
                   return (
                     <tr key={index} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                      <td className="py-4 px-4">
+                      <td className="py-2.5 px-3">
                         <span className="font-mono text-xs text-blue">{item.id}</span>
                       </td>
-                      <td className="py-4 px-4">
-                        <span className="font-inter text-sm text-white">{item.name}</span>
+                      <td className="py-2.5 px-3">
+                        <span className="font-inter text-xs text-white">{item.name}</span>
                       </td>
-                      <td className="py-4 px-4">
+                      <td className="py-2.5 px-3">
                         <span className="font-inter text-xs text-silver/70">{item.category}</span>
                       </td>
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-24 progress-bar h-1.5">
-                            <div 
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-20 progress-bar h-1.5">
+                            <div
                               className={`progress-bar-fill h-full rounded-full transition-all ${
-                                status === 'critical' ? 'bg-magenta' : 
+                                status === 'critical' ? 'bg-magenta' :
                                 status === 'warning' ? 'bg-yellow-400' : ''
                               }`}
-                              style={{ 
+                              style={{
                                 width: `${percentage}%`,
-                                boxShadow: status === 'critical' ? '0 0 10px rgba(255, 80, 150, 0.5)' : 
+                                boxShadow: status === 'critical' ? '0 0 10px rgba(255, 80, 150, 0.5)' :
                                           status === 'warning' ? '0 0 10px rgba(250, 204, 21, 0.5)' : ''
                               }}
                             />
                           </div>
-                          <span className="font-mono text-xs text-silver/60">{item.current}/{item.max}</span>
+                          <span className="font-mono text-[10px] text-silver/60">{item.current}/{item.max}</span>
                         </div>
                       </td>
-                      <td className="py-4 px-4">
-                        <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-mono uppercase ${
-                          status === 'critical' 
+                      <td className="py-2.5 px-3">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono uppercase ${
+                          status === 'critical'
                             ? 'bg-magenta/20 text-magenta border border-magenta/30' :
-                          status === 'warning' 
+                          status === 'warning'
                             ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/30' :
                             'bg-emerald/20 text-emerald border border-emerald/30'
                         }`}>
@@ -490,11 +459,11 @@ export default function StockManagement() {
                           {status === 'critical' ? 'Reorder Now' : status === 'warning' ? 'Low Stock' : 'Good'}
                         </span>
                       </td>
-                      <td className="py-4 px-4">
+                      <td className="py-2.5 px-3">
                         <button
                           onClick={() => handleOrderClick(item)}
                           disabled={status !== 'critical' && status !== 'warning'}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-sora font-medium transition-all ${
+                          className={`px-3 py-1 rounded-lg text-xs font-sora font-medium transition-all ${
                             status === 'critical' || status === 'warning'
                               ? 'bg-blue text-white hover:bg-blue/80 glow-blue'
                               : 'bg-white/5 text-silver/40 cursor-not-allowed'

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import './App.css';
 
@@ -10,7 +10,10 @@ import StockManagement from './sections/StockManagement';
 import AutomationStream from './sections/AutomationStream';
 import DispatchTracking from './sections/DispatchTracking';
 
+export type PageId = 'dashboard' | 'stock' | 'logs' | 'dispatch';
+
 function App() {
+  const [activePage, setActivePage] = useState<PageId>('dashboard');
 
   useEffect(() => {
     return () => {
@@ -19,7 +22,7 @@ function App() {
   }, []);
 
   return (
-    <div className="relative">
+    <div className="relative overflow-hidden" style={{ height: '100vh' }}>
       {/* Noise Overlay */}
       <div className="noise-overlay" />
 
@@ -27,29 +30,14 @@ function App() {
       <Header />
 
       {/* Top Navigation */}
-      <TopNavigation />
+      <TopNavigation activePage={activePage} setActivePage={setActivePage} />
 
-      {/* Main Content */}
-      <main className="relative pt-16">
-        {/* Section 1: Dashboard Hero - pin: true */}
-        <section id="dashboard" className="relative z-10 overflow-hidden">
-          <DashboardHero />
-        </section>
-
-        {/* Section 2: Stock Management */}
-        <section id="stock" className="relative z-20 overflow-hidden">
-          <StockManagement />
-        </section>
-
-        {/* Section 3: Automation Stream */}
-        <section id="logs" className="relative z-30 overflow-hidden">
-          <AutomationStream />
-        </section>
-
-        {/* Section 4: Dispatch Tracking */}
-        <section id="dispatch" className="relative z-40 overflow-hidden">
-          <DispatchTracking />
-        </section>
+      {/* Main Content — pt-32 clears the fixed header (64px) + fixed nav (~64px) */}
+      <main className="relative pt-32 h-full">
+        {activePage === 'dashboard' && <DashboardHero key="dashboard" />}
+        {activePage === 'stock' && <StockManagement key="stock" />}
+        {activePage === 'logs' && <AutomationStream key="logs" />}
+        {activePage === 'dispatch' && <DispatchTracking key="dispatch" />}
       </main>
     </div>
   );

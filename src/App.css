@@ -1,19 +1,5 @@
 /* App-specific styles (base styles live in index.css) */
 
-/* Pin spacer fix for GSAP */
-.pin-spacer {
-  pointer-events: none !important;
-}
-
-.pin-spacer > * {
-  pointer-events: auto !important;
-}
-
-/* Section stacking */
-section {
-  position: relative;
-}
-
 /* Glass card hover enhancement */
 .glass-card:hover {
   background: rgba(17, 27, 51, 0.8);

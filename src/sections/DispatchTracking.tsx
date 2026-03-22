@@ -1,10 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Truck, Clock, MapPin, Package, Calendar, User, FileText, Box, ChevronRight, Navigation } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-
-gsap.registerPlugin(ScrollTrigger);
 
 interface Dispatch {
   id: string;
@@ -157,36 +154,10 @@ export default function DispatchTracking() {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      // Section fade-in as it enters viewport
       gsap.fromTo(
         sectionRef.current,
-        { opacity: 0, y: 30 },
-        {
-          opacity: 1,
-          y: 0,
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: 'top 90%',
-            end: 'top 20%',
-            scrub: true,
-          },
-        }
-      );
-
-      // Section fade-out as it leaves viewport
-      gsap.fromTo(
-        sectionRef.current,
-        { opacity: 1, y: 0 },
-        {
-          opacity: 0,
-          y: -30,
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: 'bottom 65%',
-            end: 'bottom top',
-            scrub: true,
-          },
-        }
+        { opacity: 0, y: 12 },
+        { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }
       );
     }, sectionRef);
 
@@ -228,7 +199,10 @@ export default function DispatchTracking() {
     <div
       id="dispatch"
       ref={sectionRef}
-      className="relative w-full min-h-screen bg-navy-900 py-20"
+      className="relative w-full h-full overflow-hidden"
+      style={{
+        background: 'linear-gradient(180deg, #0a1628 0%, #0d1e36 50%, #0a1628 100%)',
+      }}
     >
       {/* Background Map Pattern */}
       <div 
@@ -242,66 +216,64 @@ export default function DispatchTracking() {
         }}
       />
 
-      <div className="relative z-10 max-w-6xl mx-auto px-8">
+      <div className="relative z-10 h-full flex flex-col max-w-6xl mx-auto px-8 py-4">
         {/* Header */}
-        <div className="dispatch-header mb-10">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-cyan/10 border border-cyan/30 flex items-center justify-center">
-              <Navigation className="w-5 h-5 text-cyan" />
-            </div>
-            <div>
-              <h2 className="font-sora font-bold text-2xl text-white tracking-tight-custom">
-                Dispatch Tracking
-              </h2>
-              <p className="font-inter text-sm text-silver/60">
-                Real-time monitoring of all delivery routes and ETAs
-              </p>
-            </div>
+        <div className="dispatch-header mb-3 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-cyan/10 border border-cyan/30 flex items-center justify-center">
+            <Navigation className="w-5 h-5 text-cyan" />
+          </div>
+          <div>
+            <h2 className="font-sora font-bold text-xl text-white tracking-tight-custom">
+              Dispatch
+            </h2>
+            <p className="font-inter text-xs text-silver/60">
+              Real-time monitoring of all delivery routes and ETAs
+            </p>
           </div>
         </div>
 
         {/* Stats Overview */}
-        <div className="dispatch-grid grid grid-cols-4 gap-4 mb-8">
-          <div className="dispatch-card glass-card p-5">
-            <div className="flex items-center justify-between mb-3">
-              <Truck className="w-5 h-5 text-cyan" />
+        <div className="dispatch-grid grid grid-cols-4 gap-3 mb-3">
+          <div className="dispatch-card glass-card p-3">
+            <div className="flex items-center justify-between mb-2">
+              <Truck className="w-4 h-4 text-cyan" />
             </div>
-            <p className="font-sora font-bold text-2xl text-white">4</p>
-            <p className="font-inter text-xs text-silver/60 mt-1">Active Dispatches</p>
+            <p className="font-sora font-bold text-xl text-white">4</p>
+            <p className="font-inter text-xs text-silver/60 mt-0.5">Active Dispatches</p>
           </div>
 
-          <div className="dispatch-card glass-card p-5">
-            <div className="flex items-center justify-between mb-3">
-              <Clock className="w-5 h-5 text-emerald" />
+          <div className="dispatch-card glass-card p-3">
+            <div className="flex items-center justify-between mb-2">
+              <Clock className="w-4 h-4 text-emerald" />
             </div>
-            <p className="font-sora font-bold text-2xl text-white">2</p>
-            <p className="font-inter text-xs text-silver/60 mt-1">On Schedule</p>
+            <p className="font-sora font-bold text-xl text-white">2</p>
+            <p className="font-inter text-xs text-silver/60 mt-0.5">On Schedule</p>
           </div>
 
-          <div className="dispatch-card glass-card p-5">
-            <div className="flex items-center justify-between mb-3">
-              <MapPin className="w-5 h-5 text-magenta" />
+          <div className="dispatch-card glass-card p-3">
+            <div className="flex items-center justify-between mb-2">
+              <MapPin className="w-4 h-4 text-magenta" />
             </div>
-            <p className="font-sora font-bold text-2xl text-white">86.9</p>
-            <p className="font-inter text-xs text-silver/60 mt-1">Total Miles Today</p>
+            <p className="font-sora font-bold text-xl text-white">86.9</p>
+            <p className="font-inter text-xs text-silver/60 mt-0.5">Total Miles Today</p>
           </div>
 
-          <div className="dispatch-card glass-card p-5">
-            <div className="flex items-center justify-between mb-3">
-              <Package className="w-5 h-5 text-purple-400" />
+          <div className="dispatch-card glass-card p-3">
+            <div className="flex items-center justify-between mb-2">
+              <Package className="w-4 h-4 text-purple-400" />
             </div>
-            <p className="font-sora font-bold text-2xl text-white">113</p>
-            <p className="font-inter text-xs text-silver/60 mt-1">Items Delivered</p>
+            <p className="font-sora font-bold text-xl text-white">113</p>
+            <p className="font-inter text-xs text-silver/60 mt-0.5">Items Delivered</p>
           </div>
         </div>
 
-        {/* Dispatch Cards */}
-        <div className="grid grid-cols-2 gap-6">
+        {/* Dispatch Cards — scrollable if needed */}
+        <div className="grid grid-cols-2 gap-4 overflow-y-auto flex-1 content-start">
           {dispatches.map((dispatch, index) => (
             <div
               key={index}
               onClick={() => handleCardClick(dispatch)}
-              className="dispatch-card glass-card p-5 hover:border-cyan/30 transition-all duration-300 cursor-pointer group"
+              className="dispatch-card glass-card p-4 hover:border-cyan/30 transition-all duration-300 cursor-pointer group"
             >
               {/* Header */}
               <div className="flex items-start justify-between mb-4">

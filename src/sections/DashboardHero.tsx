@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { 
-  Cloud, 
-  TrafficCone, 
-  Bell, 
-  Film, 
-  UtensilsCrossed, 
+import {
+  Cloud,
+  TrafficCone,
+  Bell,
+  Film,
+  UtensilsCrossed,
   ShoppingBag,
   RefreshCw,
   AlertCircle,
@@ -18,8 +17,6 @@ import {
   Zap,
   Database
 } from 'lucide-react';
-
-gsap.registerPlugin(ScrollTrigger);
 
 const automationCards = [
   { icon: Cloud, label: 'WEATHER', desc: 'Order ETD Date changes', progress: 62, sectionId: 'dashboard', color: 'blue' },
@@ -53,85 +50,22 @@ export default function DashboardHero() {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      const leftCards = leftPanelRef.current?.querySelectorAll('.automation-card');
-      const metrics = metricsRef.current?.querySelectorAll('.metric-item');
-
-      // Set initial visible state
-      gsap.set([orbRef.current, rightPanelRef.current], { opacity: 1, scale: 1 });
-      if (leftCards) gsap.set(leftCards, { opacity: 1 });
-      if (metrics) gsap.set(metrics, { opacity: 1 });
-
-      // Scroll-driven animation (pinned) — fully bidirectional via scrub
-      const scrollTl = gsap.timeline({
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: 'top top',
-          end: '+=100%',
-          pin: true,
-          scrub: true,
-          anticipatePin: 1,
-        },
-      });
-
-      // Features fade out in place (no movement)
-      if (leftCards) {
-        scrollTl.fromTo(
-          leftCards,
-          { opacity: 1 },
-          { opacity: 0, stagger: 0.02, ease: 'power1.in' },
-          0
-        );
-      }
-
-      scrollTl.fromTo(
-        rightPanelRef.current,
-        { opacity: 1 },
-        { opacity: 0, ease: 'power1.in' },
-        0
-      );
-
-      if (metrics) {
-        scrollTl.fromTo(
-          metrics,
-          { opacity: 1 },
-          { opacity: 0, stagger: 0.02, ease: 'power1.in' },
-          0
-        );
-      }
-
-      // Orb zooms then fades out
-      scrollTl.fromTo(
-        orbRef.current,
-        { scale: 1 },
-        { scale: 1.4, ease: 'power1.in' },
-        0
-      );
-
-      scrollTl.fromTo(
-        orbRef.current,
-        { opacity: 1 },
-        { opacity: 0, ease: 'power2.in' },
-        0.5
+      // Simple fade-in on mount
+      gsap.fromTo(
+        sectionRef.current,
+        { opacity: 0, y: 12 },
+        { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }
       );
     }, sectionRef);
 
-    return () => {
-      ctx.revert();
-    };
+    return () => ctx.revert();
   }, []);
-
-  const handleCardClick = (sectionId: string) => {
-    const section = document.getElementById(sectionId);
-    if (section) {
-      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
 
   return (
     <div
       id="dashboard"
       ref={sectionRef}
-      className="relative w-full h-screen overflow-hidden"
+      className="relative w-full h-full overflow-hidden"
       style={{
         background: 'linear-gradient(180deg, #0a1628 0%, #0d1e36 50%, #0a1628 100%)',
       }}
@@ -169,7 +103,7 @@ export default function DashboardHero() {
       </div>
 
       {/* Main Content Grid */}
-      <div className="relative z-10 w-full h-full grid grid-cols-12 gap-6 px-8 pt-24 pb-20">
+      <div className="relative z-10 w-full h-full grid grid-cols-12 gap-6 px-8 pt-6 pb-4">
         {/* Left Panel - Automation Stream */}
         <div 
           ref={leftPanelRef}
@@ -189,8 +123,7 @@ export default function DashboardHero() {
             {automationCards.map((card, index) => (
               <div
                 key={index}
-                onClick={() => handleCardClick(card.sectionId)}
-                className="automation-card glass-card p-3 hover:border-blue/40 transition-all duration-300 cursor-pointer group relative overflow-hidden"
+                className="automation-card glass-card p-3 hover:border-blue/40 transition-all duration-300 group relative overflow-hidden"
               >
                 {/* Hover glow */}
                 <div 
