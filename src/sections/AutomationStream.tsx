@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
-import { CheckCircle2, XCircle, ExternalLink, Webhook, Brain, Truck, Printer, X, AlertTriangle, Clock, type LucideIcon } from 'lucide-react';
+import { CheckCircle2, XCircle, ExternalLink, Webhook, Brain, Truck, Printer, X, AlertTriangle, Clock, RefreshCw, type LucideIcon } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface LogEntry {
@@ -190,13 +190,13 @@ export default function AutomationStream() {
           </div>
         </div>
 
-        {/* Log List - Compact 2-col grid filling remaining height */}
-        <div className="grid grid-cols-2 gap-2 overflow-y-auto flex-1 content-start">
+        {/* Log List — 2-col grid, scrollable within its share of the column */}
+        <div className="grid grid-cols-2 gap-2 overflow-y-auto content-start flex-1 min-h-0">
           {logEntries.map((entry, index) => (
             <div
               key={index}
               onClick={() => handleRowClick(entry)}
-              className="log-row glass-card p-3 flex items-center gap-3 hover:border-blue/30 transition-all duration-300 cursor-pointer group"
+              className="log-row glass-card p-3 flex items-center gap-3 hover:border-blue/30 transition-all duration-300 cursor-pointer group h-fit"
             >
               {/* Time Badge */}
               <div className="font-mono text-[10px] text-silver/50 w-12 flex-shrink-0">
@@ -217,8 +217,8 @@ export default function AutomationStream() {
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 {getStatusIcon(entry.status)}
                 <span className={`font-mono text-[10px] ${
-                  entry.status === 'failed' ? 'text-magenta' : 
-                  entry.status === 'warning' ? 'text-yellow-400' : 
+                  entry.status === 'failed' ? 'text-magenta' :
+                  entry.status === 'warning' ? 'text-yellow-400' :
                   'text-silver/60'
                 }`}>
                   {entry.result}
@@ -230,6 +230,62 @@ export default function AutomationStream() {
             </div>
           ))}
         </div>
+
+        {/* ── Failed Automations Panel ── */}
+        {(() => {
+          const failedEntries = logEntries.filter(e => e.status === 'failed');
+          if (failedEntries.length === 0) return null;
+          return (
+            <div className="flex-shrink-0 mt-3 glass-card p-4 border-magenta/25">
+              {/* Section header */}
+              <div className="flex items-center gap-2 mb-3">
+                <AlertTriangle className="w-4 h-4 text-magenta" />
+                <h3 className="font-sora font-semibold text-sm text-magenta">Failed Automations</h3>
+                <span className="ml-auto glass-card px-2 py-0.5 font-mono text-[10px] text-magenta border-magenta/30">
+                  {failedEntries.length} issue{failedEntries.length > 1 ? 's' : ''}
+                </span>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                {failedEntries.map((entry, idx) => {
+                  const errorStep = entry.workflow.find(s => s.status === 'error');
+                  const pendingStep = entry.workflow.find(s => s.status === 'pending');
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => handleRowClick(entry)}
+                      className="glass-card p-3 border-magenta/15 hover:border-magenta/40 transition-all duration-300 cursor-pointer group"
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <XCircle className="w-3.5 h-3.5 text-magenta" />
+                          <span className="font-sora font-semibold text-sm text-white group-hover:text-magenta transition-colors">
+                            {entry.event}
+                          </span>
+                        </div>
+                        <span className="font-mono text-[10px] text-silver/50">{entry.time}</span>
+                      </div>
+                      {errorStep && (
+                        <p className="font-inter text-xs text-magenta/80 mb-1">
+                          Failed at <span className="font-semibold">{errorStep.label}</span> — connection could not be established
+                        </p>
+                      )}
+                      <div className="flex items-center justify-between">
+                        <p className="font-mono text-[10px] text-silver/50">
+                          Result: {entry.result}{pendingStep ? ` · ${pendingStep.label}` : ''}
+                        </p>
+                        <button className="flex items-center gap-1 text-[10px] font-sora text-blue/70 hover:text-blue transition-colors">
+                          <RefreshCw className="w-3 h-3" /> Retry
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
       </div>
 
       {/* Workflow Dialog - Matching Main Page Style */}

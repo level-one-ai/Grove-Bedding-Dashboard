@@ -35,7 +35,7 @@ export default function TopNavigation({ activePage, setActivePage }: Props) {
   return (
     <div
       ref={navRef}
-      className="fixed top-16 left-0 right-0 z-[90] flex justify-center"
+      className="fixed top-16 left-0 right-0 z-[90] flex justify-center pt-1"
     >
       <div className="glass-card px-2 py-2 flex items-center gap-1">
         {navItems.map((item, index) => (

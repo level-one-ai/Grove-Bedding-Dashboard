@@ -267,73 +267,65 @@ export default function DispatchTracking() {
           </div>
         </div>
 
-        {/* Dispatch Cards — scrollable if needed */}
-        <div className="grid grid-cols-2 gap-4 overflow-y-auto flex-1 content-start">
+        {/* Dispatch Cards — 4 columns, all visible at once */}
+        <div className="grid grid-cols-4 gap-3 flex-1 min-h-0">
           {dispatches.map((dispatch, index) => (
             <div
               key={index}
               onClick={() => handleCardClick(dispatch)}
-              className="dispatch-card glass-card p-4 hover:border-cyan/30 transition-all duration-300 cursor-pointer group"
+              className="dispatch-card glass-card p-4 hover:border-cyan/30 transition-all duration-300 cursor-pointer group flex flex-col"
             >
-              {/* Header */}
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-mono text-xs text-cyan">{dispatch.id}</span>
-                    <span className="text-silver/30">•</span>
-                    <span className="font-mono text-xs text-silver/50">{dispatch.orderRef}</span>
-                  </div>
-                  <h3 className="font-sora font-semibold text-white group-hover:text-cyan transition-colors">
-                    {dispatch.client.name}
-                  </h3>
-                </div>
-                <span className={`px-3 py-1 rounded-full text-[10px] font-mono uppercase border ${getStatusColor(dispatch.status)}`}>
+              {/* ID + Status */}
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-mono text-xs text-cyan">{dispatch.id}</span>
+                <span className={`px-2 py-0.5 rounded-full text-[9px] font-mono uppercase border ${getStatusColor(dispatch.status)}`}>
                   {getStatusLabel(dispatch.status)}
                 </span>
               </div>
 
-              {/* Route Info */}
-              <div className="flex items-center gap-3 mb-4 text-sm">
-                <div className="flex items-center gap-1.5 text-silver/60">
-                  <MapPin className="w-3.5 h-3.5" />
-                  <span className="font-inter text-xs">{dispatch.route.distance}</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-silver/60">
-                  <Clock className="w-3.5 h-3.5" />
-                  <span className="font-inter text-xs">{dispatch.route.estimatedTime}</span>
-                </div>
-              </div>
+              {/* Client + Order */}
+              <h3 className="font-sora font-semibold text-sm text-white group-hover:text-cyan transition-colors truncate mb-0.5">
+                {dispatch.client.name}
+              </h3>
+              <p className="font-mono text-[10px] text-silver/50 mb-3">{dispatch.orderRef}</p>
 
-              {/* Progress Bar */}
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-1.5">
+              {/* Progress */}
+              <div className="mb-3">
+                <div className="flex items-center justify-between mb-1">
                   <span className="font-mono text-[10px] text-silver/50">Progress</span>
                   <span className="font-mono text-[10px] text-cyan">{dispatch.progress}%</span>
                 </div>
-                <div className="progress-bar h-2">
-                  <div 
-                    className="progress-bar-fill h-full rounded-full transition-all"
-                    style={{ width: `${dispatch.progress}%` }}
-                  />
+                <div className="progress-bar h-1.5">
+                  <div className="progress-bar-fill h-full rounded-full" style={{ width: `${dispatch.progress}%` }} />
+                </div>
+              </div>
+
+              {/* Route */}
+              <div className="flex items-center gap-3 mb-3 text-silver/50">
+                <div className="flex items-center gap-1">
+                  <MapPin className="w-3 h-3" />
+                  <span className="font-inter text-[10px]">{dispatch.route.distance}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  <span className="font-inter text-[10px]">{dispatch.route.estimatedTime}</span>
                 </div>
               </div>
 
               {/* Times */}
-              <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-3.5 h-3.5 text-silver/40" />
-                  <span className="font-mono text-[10px] text-silver/60">Dispatch: {dispatch.dispatchTime}</span>
+              <div className="mt-auto border-t border-white/5 pt-2.5 flex flex-col gap-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[10px] text-silver/50">Dispatch</span>
+                  <span className="font-mono text-[10px] text-silver/60">{dispatch.dispatchTime}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="w-3.5 h-3.5 text-emerald" />
-                  <span className="font-mono text-[10px] text-emerald">ETA: {dispatch.eta}</span>
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[10px] text-silver/50">ETA</span>
+                  <span className="font-mono text-[10px] text-emerald">{dispatch.eta}</span>
                 </div>
-              </div>
-
-              {/* Driver Info */}
-              <div className="mt-4 flex items-center gap-2 text-xs text-silver/50">
-                <Truck className="w-3.5 h-3.5" />
-                <span className="font-inter">{dispatch.driver.name} • {dispatch.driver.vehicle}</span>
+                <div className="flex items-center gap-1 mt-1 text-silver/40">
+                  <Truck className="w-3 h-3" />
+                  <span className="font-inter text-[10px] truncate">{dispatch.driver.name}</span>
+                </div>
               </div>
             </div>
           ))}
