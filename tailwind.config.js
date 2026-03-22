@@ -48,36 +48,41 @@ module.exports = {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        // Custom colors - Lighter with blue accents
+        // Custom colors
         navy: {
-          900: '#0a1628',
-          800: '#0d1e36',
-          700: '#14233c',
-          600: '#1a2d4d',
+          900: '#f5f6fa',
+          800: '#f0f1f7',
+          700: '#e2e8f0',
+          600: '#cbd5e1',
+        },
+        orange: {
+          DEFAULT: '#f97316',
+          light: '#fff7ed',
+          dark: '#ea580c',
         },
         blue: {
-          DEFAULT: '#0096ff',
-          light: '#00c8ff',
-          dark: '#0066cc',
-          glow: 'rgba(0, 150, 255, 0.4)',
+          DEFAULT: '#3b82f6',
+          light: '#93c5fd',
+          dark: '#2563eb',
+          glow: 'rgba(59, 130, 246, 0.3)',
         },
         cyan: {
-          DEFAULT: '#00c8ff',
-          glow: 'rgba(0, 200, 255, 0.4)',
+          DEFAULT: '#0ea5e9',
+          glow: 'rgba(14, 165, 233, 0.3)',
         },
         magenta: {
-          DEFAULT: '#ff5096',
-          glow: 'rgba(255, 80, 150, 0.4)',
+          DEFAULT: '#ef4444',
+          glow: 'rgba(239, 68, 68, 0.3)',
         },
         emerald: {
-          DEFAULT: '#32dc96',
-          glow: 'rgba(50, 220, 150, 0.4)',
+          DEFAULT: '#22c55e',
+          glow: 'rgba(34, 197, 94, 0.3)',
         },
         silver: {
-          DEFAULT: '#a8c4e8',
+          DEFAULT: '#64748b',
         },
         gold: {
-          DEFAULT: '#ffd700',
+          DEFAULT: '#f59e0b',
         },
       },
       fontFamily: {

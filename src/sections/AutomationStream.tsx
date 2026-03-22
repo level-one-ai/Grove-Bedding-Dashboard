@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
-import { CheckCircle2, XCircle, ExternalLink, Webhook, Brain, Truck, Printer, X, AlertTriangle, Clock, RefreshCw, type LucideIcon } from 'lucide-react';
+import { CheckCircle2, XCircle, ExternalLink, Webhook, Brain, Truck, Printer, AlertTriangle, Clock, RefreshCw, type LucideIcon } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface LogEntry {
@@ -21,24 +21,24 @@ interface WorkflowStep {
 
 const workflowTemplates: Record<string, WorkflowStep[]> = {
   'Cin7 Webhook': [
-    { icon: Webhook, label: 'Cin7 Omni Webhook', status: 'success', timestamp: '09:14:02', color: '#0096ff' },
-    { icon: Brain, label: 'Data Validation', status: 'success', timestamp: '09:14:03', color: '#32dc96' },
-    { icon: Truck, label: 'Order Creation', status: 'success', timestamp: '09:14:05', color: '#00c8ff' },
+    { icon: Webhook, label: 'Cin7 Omni Webhook', status: 'success', timestamp: '09:14:02', color: '#3b82f6' },
+    { icon: Brain, label: 'Data Validation', status: 'success', timestamp: '09:14:03', color: '#22c55e' },
+    { icon: Truck, label: 'Order Creation', status: 'success', timestamp: '09:14:05', color: '#0ea5e9' },
   ],
   'Claude AI Extraction': [
-    { icon: Webhook, label: 'PDF Upload', status: 'success', timestamp: '09:14:10', color: '#0096ff' },
-    { icon: Brain, label: 'Claude AI Parse', status: 'success', timestamp: '09:14:11', color: '#a855f7' },
-    { icon: Printer, label: 'Data Extraction', status: 'success', timestamp: '09:14:13', color: '#00c8ff' },
+    { icon: Webhook, label: 'PDF Upload', status: 'success', timestamp: '09:14:10', color: '#3b82f6' },
+    { icon: Brain, label: 'Claude AI Parse', status: 'success', timestamp: '09:14:11', color: '#8b5cf6' },
+    { icon: Printer, label: 'Data Extraction', status: 'success', timestamp: '09:14:13', color: '#0ea5e9' },
   ],
   'Spoke Dispatch': [
-    { icon: Webhook, label: 'Route Request', status: 'success', timestamp: '09:14:15', color: '#0096ff' },
-    { icon: Truck, label: 'Driver Assignment', status: 'success', timestamp: '09:14:16', color: '#32dc96' },
-    { icon: Printer, label: 'Dispatch Confirm', status: 'success', timestamp: '09:14:18', color: '#00c8ff' },
+    { icon: Webhook, label: 'Route Request', status: 'success', timestamp: '09:14:15', color: '#3b82f6' },
+    { icon: Truck, label: 'Driver Assignment', status: 'success', timestamp: '09:14:16', color: '#22c55e' },
+    { icon: Printer, label: 'Dispatch Confirm', status: 'success', timestamp: '09:14:18', color: '#0ea5e9' },
   ],
   'Dymo Print': [
-    { icon: Webhook, label: 'Print Request', status: 'success', timestamp: '09:14:20', color: '#0096ff' },
-    { icon: Printer, label: 'Dymo Connect', status: 'error', timestamp: '09:14:22', color: '#ff5096' },
-    { icon: AlertTriangle, label: 'Retry Queued', status: 'pending', timestamp: '09:14:25', color: '#ffd700' },
+    { icon: Webhook, label: 'Print Request', status: 'success', timestamp: '09:14:20', color: '#3b82f6' },
+    { icon: Printer, label: 'Dymo Connect', status: 'error', timestamp: '09:14:22', color: '#ef4444' },
+    { icon: AlertTriangle, label: 'Retry Queued', status: 'pending', timestamp: '09:14:25', color: '#f59e0b' },
   ],
 };
 
@@ -55,17 +55,10 @@ const logEntries: LogEntry[] = [
   { time: '09:16:14', event: 'Claude AI Extraction', status: 'success', result: '5 fields parsed', workflow: workflowTemplates['Claude AI Extraction'] },
 ];
 
-interface Notification {
-  id: number;
-  message: string;
-  type: 'error' | 'warning' | 'success';
-}
-
 export default function AutomationStream() {
   const sectionRef = useRef<HTMLDivElement>(null);
   const [selectedWorkflow, setSelectedWorkflow] = useState<LogEntry | null>(null);
   const [workflowDialogOpen, setWorkflowDialogOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -76,23 +69,8 @@ export default function AutomationStream() {
       );
     }, sectionRef);
 
-    // Check for failed automations and show notifications
-    const failedEntries = logEntries.filter(entry => entry.status === 'failed');
-    if (failedEntries.length > 0) {
-      const newNotifications = failedEntries.map((entry, idx) => ({
-        id: Date.now() + idx,
-        message: `${entry.event} failed: ${entry.result}`,
-        type: 'error' as const,
-      }));
-      setNotifications(newNotifications);
-    }
-
     return () => ctx.revert();
   }, []);
-
-  const removeNotification = (id: number) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  };
 
   const handleRowClick = (entry: LogEntry) => {
     setSelectedWorkflow(entry);
@@ -102,26 +80,22 @@ export default function AutomationStream() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'success':
-        return <CheckCircle2 className="w-4 h-4 text-emerald" />;
+        return <CheckCircle2 className="w-4 h-4" style={{ color: '#22c55e' }} />;
       case 'failed':
-        return <XCircle className="w-4 h-4 text-magenta" />;
+        return <XCircle className="w-4 h-4" style={{ color: '#ef4444' }} />;
       case 'warning':
-        return <AlertTriangle className="w-4 h-4 text-yellow-400" />;
+        return <AlertTriangle className="w-4 h-4" style={{ color: '#f59e0b' }} />;
       default:
         return null;
     }
   };
 
-  const getStatusDot = (status: string) => {
+  const getStatusDotColor = (status: string) => {
     switch (status) {
-      case 'success':
-        return 'bg-emerald';
-      case 'failed':
-        return 'bg-magenta';
-      case 'warning':
-        return 'bg-yellow-400';
-      default:
-        return 'bg-silver/30';
+      case 'success': return '#22c55e';
+      case 'failed': return '#ef4444';
+      case 'warning': return '#f59e0b';
+      default: return '#cbd5e1';
     }
   };
 
@@ -130,56 +104,32 @@ export default function AutomationStream() {
       id="logs"
       ref={sectionRef}
       className="relative w-full h-full overflow-hidden"
-      style={{
-        background: 'linear-gradient(180deg, #0a1628 0%, #0d1e36 100%)',
-      }}
+      style={{ background: '#f5f6fa' }}
     >
-      {/* Notifications */}
-      <div className="fixed top-24 right-6 z-[200] space-y-2">
-        {notifications.map((notification) => (
-          <div
-            key={notification.id}
-            className="glass-card border-magenta/30 p-4 flex items-start gap-3 max-w-sm animate-in slide-in-from-right"
-            style={{ animation: 'slideIn 0.3s ease-out' }}
-          >
-            <AlertTriangle className="w-5 h-5 text-magenta flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="font-sora font-semibold text-sm text-magenta">Automation Failed</p>
-              <p className="font-inter text-xs text-silver/60 mt-1">{notification.message}</p>
-            </div>
-            <button
-              onClick={() => removeNotification(notification.id)}
-              className="text-silver/40 hover:text-white transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        ))}
-      </div>
-
-      {/* Background */}
-      <div className="absolute inset-0 opacity-[0.03]"
+      {/* Subtle dot grid */}
+      <div
+        className="absolute inset-0 opacity-[0.5]"
         style={{
-          backgroundImage: `
-            linear-gradient(rgba(0, 150, 255, 0.5) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0, 150, 255, 0.5) 1px, transparent 1px)
-          `,
-          backgroundSize: '40px 40px',
+          backgroundImage: `radial-gradient(circle, #cbd5e1 1px, transparent 1px)`,
+          backgroundSize: '28px 28px',
         }}
       />
 
       <div className="relative z-10 h-full flex flex-col max-w-5xl mx-auto px-8 py-4">
         {/* Header */}
-        <div className="logs-header mb-4 flex items-center justify-between">
+        <div className="mb-4 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-blue/10 border border-blue/30 flex items-center justify-center">
-              <Clock className="w-4 h-4 text-blue" />
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{ background: '#fff7ed', border: '1px solid #fed7aa' }}
+            >
+              <Clock className="w-4 h-4" style={{ color: '#f97316' }} />
             </div>
             <div>
-              <h2 className="font-sora font-bold text-xl text-white tracking-tight-custom">
+              <h2 className="font-sora font-bold text-xl" style={{ color: '#1e293b' }}>
                 Automation
               </h2>
-              <p className="font-inter text-xs text-silver/60">
+              <p className="font-inter text-xs" style={{ color: '#64748b' }}>
                 Click any entry to view workflow
               </p>
             </div>
@@ -190,25 +140,31 @@ export default function AutomationStream() {
           </div>
         </div>
 
-        {/* Log List — 2-col grid, scrollable within its share of the column */}
+        {/* Log List — 2-col grid */}
         <div className="grid grid-cols-2 gap-2 overflow-y-auto content-start flex-1 min-h-0">
           {logEntries.map((entry, index) => (
             <div
               key={index}
               onClick={() => handleRowClick(entry)}
-              className="log-row glass-card p-3 flex items-center gap-3 hover:border-blue/30 transition-all duration-300 cursor-pointer group h-fit"
+              className="glass-card p-3 flex items-center gap-3 hover:shadow-md transition-all duration-300 cursor-pointer group h-fit"
             >
               {/* Time Badge */}
-              <div className="font-mono text-[10px] text-silver/50 w-12 flex-shrink-0">
+              <div className="font-mono text-[10px] w-12 flex-shrink-0" style={{ color: '#94a3b8' }}>
                 {entry.time}
               </div>
 
               {/* Status Dot */}
-              <div className={`w-1.5 h-1.5 rounded-full ${getStatusDot(entry.status)} flex-shrink-0`} />
+              <div
+                className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                style={{ background: getStatusDotColor(entry.status) }}
+              />
 
               {/* Event Name */}
               <div className="flex-1 min-w-0">
-                <span className="font-sora font-medium text-xs text-white group-hover:text-blue transition-colors">
+                <span
+                  className="font-sora font-medium text-xs group-hover:text-orange-500 transition-colors"
+                  style={{ color: '#334155' }}
+                >
                   {entry.event}
                 </span>
               </div>
@@ -216,32 +172,40 @@ export default function AutomationStream() {
               {/* Result */}
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 {getStatusIcon(entry.status)}
-                <span className={`font-mono text-[10px] ${
-                  entry.status === 'failed' ? 'text-magenta' :
-                  entry.status === 'warning' ? 'text-yellow-400' :
-                  'text-silver/60'
-                }`}>
+                <span
+                  className="font-mono text-[10px]"
+                  style={{
+                    color: entry.status === 'failed' ? '#ef4444' :
+                           entry.status === 'warning' ? '#f59e0b' :
+                           '#94a3b8'
+                  }}
+                >
                   {entry.result}
                 </span>
               </div>
 
               {/* View Icon */}
-              <ExternalLink className="w-3 h-3 text-silver/30 group-hover:text-blue transition-colors" />
+              <ExternalLink className="w-3 h-3 flex-shrink-0 text-slate-300 group-hover:text-orange-400 transition-colors" />
             </div>
           ))}
         </div>
 
-        {/* ── Failed Automations Panel ── */}
+        {/* Failed Automations Panel */}
         {(() => {
           const failedEntries = logEntries.filter(e => e.status === 'failed');
           if (failedEntries.length === 0) return null;
           return (
-            <div className="flex-shrink-0 mt-3 glass-card p-4 border-magenta/25">
-              {/* Section header */}
+            <div
+              className="flex-shrink-0 mt-3 rounded-2xl p-4"
+              style={{ background: '#fef2f2', border: '1px solid #fecaca' }}
+            >
               <div className="flex items-center gap-2 mb-3">
-                <AlertTriangle className="w-4 h-4 text-magenta" />
-                <h3 className="font-sora font-semibold text-sm text-magenta">Failed Automations</h3>
-                <span className="ml-auto glass-card px-2 py-0.5 font-mono text-[10px] text-magenta border-magenta/30">
+                <AlertTriangle className="w-4 h-4" style={{ color: '#ef4444' }} />
+                <h3 className="font-sora font-semibold text-sm" style={{ color: '#dc2626' }}>Failed Automations</h3>
+                <span
+                  className="ml-auto px-2 py-0.5 rounded-lg font-mono text-[10px]"
+                  style={{ background: '#fecaca', color: '#dc2626' }}
+                >
                   {failedEntries.length} issue{failedEntries.length > 1 ? 's' : ''}
                 </span>
               </div>
@@ -254,27 +218,28 @@ export default function AutomationStream() {
                     <div
                       key={idx}
                       onClick={() => handleRowClick(entry)}
-                      className="glass-card p-3 border-magenta/15 hover:border-magenta/40 transition-all duration-300 cursor-pointer group"
+                      className="bg-white rounded-xl p-3 hover:shadow-sm transition-all cursor-pointer group"
+                      style={{ border: '1px solid #fecaca' }}
                     >
                       <div className="flex items-center justify-between mb-1.5">
                         <div className="flex items-center gap-2">
-                          <XCircle className="w-3.5 h-3.5 text-magenta" />
-                          <span className="font-sora font-semibold text-sm text-white group-hover:text-magenta transition-colors">
+                          <XCircle className="w-3.5 h-3.5" style={{ color: '#ef4444' }} />
+                          <span className="font-sora font-semibold text-sm" style={{ color: '#1e293b' }}>
                             {entry.event}
                           </span>
                         </div>
-                        <span className="font-mono text-[10px] text-silver/50">{entry.time}</span>
+                        <span className="font-mono text-[10px]" style={{ color: '#94a3b8' }}>{entry.time}</span>
                       </div>
                       {errorStep && (
-                        <p className="font-inter text-xs text-magenta/80 mb-1">
+                        <p className="font-inter text-xs mb-1" style={{ color: '#ef4444' }}>
                           Failed at <span className="font-semibold">{errorStep.label}</span> — connection could not be established
                         </p>
                       )}
                       <div className="flex items-center justify-between">
-                        <p className="font-mono text-[10px] text-silver/50">
+                        <p className="font-mono text-[10px]" style={{ color: '#94a3b8' }}>
                           Result: {entry.result}{pendingStep ? ` · ${pendingStep.label}` : ''}
                         </p>
-                        <button className="flex items-center gap-1 text-[10px] font-sora text-blue/70 hover:text-blue transition-colors">
+                        <button className="flex items-center gap-1 text-[10px] font-sora" style={{ color: '#f97316' }}>
                           <RefreshCw className="w-3 h-3" /> Retry
                         </button>
                       </div>
@@ -285,84 +250,100 @@ export default function AutomationStream() {
             </div>
           );
         })()}
-
       </div>
 
-      {/* Workflow Dialog - Matching Main Page Style */}
+      {/* Workflow Dialog — Horizontal Make.com Style */}
       <Dialog open={workflowDialogOpen} onOpenChange={setWorkflowDialogOpen}>
-        <DialogContent className="glass-card border-blue/20 max-w-lg">
+        <DialogContent className="max-w-2xl" style={{ background: '#ffffff', border: '1px solid #e2e8f0' }}>
           <DialogHeader>
-            <DialogTitle className="font-sora font-bold text-xl text-white flex items-center gap-3">
+            <DialogTitle className="font-sora font-bold text-xl flex items-center gap-3" style={{ color: '#1e293b' }}>
               {selectedWorkflow && getStatusIcon(selectedWorkflow.status)}
               {selectedWorkflow?.event} Workflow
             </DialogTitle>
           </DialogHeader>
-          
+
           {selectedWorkflow && (
-            <div className="mt-4">
-              <p className="font-mono text-xs text-silver/50 mb-6">
+            <div className="mt-2">
+              <p className="font-mono text-xs mb-8" style={{ color: '#94a3b8' }}>
                 Triggered at {selectedWorkflow.time} • Result: {selectedWorkflow.result}
               </p>
-              
-              {/* Make.com Style Workflow - Matching Main Page */}
-              <div className="relative">
-                {/* Connection Line */}
-                <div 
-                  className="absolute left-6 top-8 bottom-8 w-0.5"
-                  style={{
-                    background: 'linear-gradient(to bottom, rgba(0, 150, 255, 0.5), rgba(0, 200, 255, 0.3), rgba(50, 220, 150, 0.2))',
-                  }}
-                />
-                
-                <div className="space-y-4">
-                  {selectedWorkflow.workflow.map((step, idx) => (
-                    <div key={idx} className="flex items-center gap-4 relative">
-                      {/* Step Circle - Matching main page workflow-module style */}
-                      <div 
-                        className="w-12 h-12 rounded-full flex items-center justify-center border-2 z-10 transition-all"
+
+              {/* ── Horizontal Make.com Style Workflow ── */}
+              <div className="flex items-start justify-center gap-0 overflow-x-auto pb-4">
+                {selectedWorkflow.workflow.map((step, idx) => (
+                  <div key={idx} className="flex items-center flex-shrink-0">
+
+                    {/* Module + Label + Status */}
+                    <div className="flex flex-col items-center gap-2 w-28">
+                      {/* Circle */}
+                      <div
+                        className="w-14 h-14 rounded-full flex items-center justify-center border-2 transition-all"
                         style={{
-                          background: 'rgba(20, 35, 60, 0.8)',
+                          background: '#ffffff',
                           borderColor: step.color,
-                          boxShadow: `0 0 20px ${step.color}60`,
+                          boxShadow: `0 0 16px ${step.color}30, 0 2px 8px rgba(0,0,0,0.08)`,
                         }}
                       >
-                        <step.icon className="w-5 h-5" style={{ color: step.color }} />
+                        <step.icon className="w-6 h-6" style={{ color: step.color }} />
                       </div>
-                      
-                      {/* Step Info */}
-                      <div className="flex-1 glass-card p-3 border-blue/10">
-                        <div className="flex items-center justify-between">
-                          <span className="font-sora font-medium text-sm text-white">
-                            {step.label}
-                          </span>
-                          <span className="font-mono text-[10px] text-silver/50">
-                            {step.timestamp}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span 
-                            className="w-1.5 h-1.5 rounded-full"
-                            style={{ 
-                              background: step.status === 'success' ? '#32dc96' : 
-                                         step.status === 'error' ? '#ff5096' : '#ffd700',
-                              boxShadow: `0 0 6px ${step.status === 'success' ? '#32dc96' : 
-                                         step.status === 'error' ? '#ff5096' : '#ffd700'}`,
-                            }}
-                          />
-                          <span 
-                            className="font-mono text-[10px] uppercase"
-                            style={{
-                              color: step.status === 'success' ? '#32dc96' : 
-                                     step.status === 'error' ? '#ff5096' : '#ffd700',
-                            }}
-                          >
-                            {step.status}
-                          </span>
-                        </div>
+
+                      {/* Label */}
+                      <span
+                        className="font-sora font-medium text-xs text-center leading-tight"
+                        style={{ color: '#334155' }}
+                      >
+                        {step.label}
+                      </span>
+
+                      {/* Status */}
+                      <div className="flex items-center gap-1">
+                        <div
+                          className="w-1.5 h-1.5 rounded-full"
+                          style={{
+                            background: step.status === 'success' ? '#22c55e' :
+                                        step.status === 'error' ? '#ef4444' : '#f59e0b',
+                          }}
+                        />
+                        <span
+                          className="font-mono text-[9px] uppercase"
+                          style={{
+                            color: step.status === 'success' ? '#22c55e' :
+                                   step.status === 'error' ? '#ef4444' : '#f59e0b',
+                          }}
+                        >
+                          {step.status}
+                        </span>
                       </div>
+
+                      {/* Timestamp */}
+                      {step.timestamp && (
+                        <span className="font-mono text-[9px]" style={{ color: '#cbd5e1' }}>
+                          {step.timestamp}
+                        </span>
+                      )}
                     </div>
-                  ))}
-                </div>
+
+                    {/* Connector arrow */}
+                    {idx < selectedWorkflow.workflow.length - 1 && (
+                      <div className="flex items-center mb-10 flex-shrink-0">
+                        <div
+                          className="h-0.5 w-10"
+                          style={{
+                            background: `linear-gradient(90deg, ${step.color}80, ${selectedWorkflow.workflow[idx + 1].color}80)`,
+                          }}
+                        />
+                        <div
+                          className="w-0 h-0 -ml-px"
+                          style={{
+                            borderTop: '4px solid transparent',
+                            borderBottom: '4px solid transparent',
+                            borderLeft: `6px solid ${selectedWorkflow.workflow[idx + 1].color}80`,
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           )}

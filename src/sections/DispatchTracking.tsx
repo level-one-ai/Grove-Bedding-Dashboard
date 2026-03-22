@@ -147,6 +147,30 @@ const dispatches: Dispatch[] = [
   },
 ];
 
+const columns = [
+  {
+    label: 'Preparing',
+    status: 'preparing' as const,
+    color: '#f59e0b',
+    colorLight: '#fffbeb',
+    colorBorder: '#fde68a',
+  },
+  {
+    label: 'In Transit',
+    status: 'in-transit' as const,
+    color: '#3b82f6',
+    colorLight: '#eff6ff',
+    colorBorder: '#bfdbfe',
+  },
+  {
+    label: 'Delivered',
+    status: 'delivered' as const,
+    color: '#22c55e',
+    colorLight: '#f0fdf4',
+    colorBorder: '#bbf7d0',
+  },
+];
+
 export default function DispatchTracking() {
   const sectionRef = useRef<HTMLDivElement>(null);
   const [selectedDispatch, setSelectedDispatch] = useState<Dispatch | null>(null);
@@ -169,307 +193,357 @@ export default function DispatchTracking() {
     setDetailDialogOpen(true);
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'in-transit':
-        return 'text-cyan border-cyan/30 bg-cyan/10';
-      case 'preparing':
-        return 'text-yellow-400 border-yellow-400/30 bg-yellow-400/10';
-      case 'delivered':
-        return 'text-emerald border-emerald/30 bg-emerald/10';
-      default:
-        return 'text-silver/60 border-white/10 bg-white/5';
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'in-transit':
-        return 'In Transit';
-      case 'preparing':
-        return 'Preparing';
-      case 'delivered':
-        return 'Delivered';
-      default:
-        return status;
-    }
-  };
-
   return (
     <div
       id="dispatch"
       ref={sectionRef}
       className="relative w-full h-full overflow-hidden"
-      style={{
-        background: 'linear-gradient(180deg, #0a1628 0%, #0d1e36 50%, #0a1628 100%)',
-      }}
+      style={{ background: '#f5f6fa' }}
     >
-      {/* Background Map Pattern */}
-      <div 
-        className="absolute inset-0 opacity-[0.03]"
+      {/* Subtle dot grid */}
+      <div
+        className="absolute inset-0 opacity-[0.5]"
         style={{
-          backgroundImage: `
-            linear-gradient(rgba(0, 240, 255, 0.3) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0, 240, 255, 0.3) 1px, transparent 1px)
-          `,
-          backgroundSize: '80px 80px',
+          backgroundImage: `radial-gradient(circle, #cbd5e1 1px, transparent 1px)`,
+          backgroundSize: '28px 28px',
         }}
       />
 
       <div className="relative z-10 h-full flex flex-col max-w-6xl mx-auto px-8 py-4">
+
         {/* Header */}
-        <div className="dispatch-header mb-3 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-cyan/10 border border-cyan/30 flex items-center justify-center">
-            <Navigation className="w-5 h-5 text-cyan" />
+        <div className="mb-3 flex items-center gap-3 flex-shrink-0">
+          <div
+            className="w-9 h-9 rounded-xl flex items-center justify-center"
+            style={{ background: '#eff6ff', border: '1px solid #bfdbfe' }}
+          >
+            <Navigation className="w-5 h-5" style={{ color: '#3b82f6' }} />
           </div>
           <div>
-            <h2 className="font-sora font-bold text-xl text-white tracking-tight-custom">
+            <h2 className="font-sora font-bold text-xl" style={{ color: '#1e293b' }}>
               Dispatch
             </h2>
-            <p className="font-inter text-xs text-silver/60">
+            <p className="font-inter text-xs" style={{ color: '#64748b' }}>
               Real-time monitoring of all delivery routes and ETAs
             </p>
           </div>
         </div>
 
         {/* Stats Overview */}
-        <div className="dispatch-grid grid grid-cols-4 gap-3 mb-3">
-          <div className="dispatch-card glass-card p-3">
-            <div className="flex items-center justify-between mb-2">
-              <Truck className="w-4 h-4 text-cyan" />
+        <div className="grid grid-cols-4 gap-3 mb-4 flex-shrink-0">
+          <div className="glass-card p-3 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#eff6ff' }}>
+              <Truck className="w-4 h-4" style={{ color: '#3b82f6' }} />
             </div>
-            <p className="font-sora font-bold text-xl text-white">4</p>
-            <p className="font-inter text-xs text-silver/60 mt-0.5">Active Dispatches</p>
+            <div>
+              <p className="font-sora font-bold text-xl" style={{ color: '#1e293b' }}>4</p>
+              <p className="font-inter text-xs" style={{ color: '#64748b' }}>Active Dispatches</p>
+            </div>
           </div>
 
-          <div className="dispatch-card glass-card p-3">
-            <div className="flex items-center justify-between mb-2">
-              <Clock className="w-4 h-4 text-emerald" />
+          <div className="glass-card p-3 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#f0fdf4' }}>
+              <Clock className="w-4 h-4" style={{ color: '#22c55e' }} />
             </div>
-            <p className="font-sora font-bold text-xl text-white">2</p>
-            <p className="font-inter text-xs text-silver/60 mt-0.5">On Schedule</p>
+            <div>
+              <p className="font-sora font-bold text-xl" style={{ color: '#1e293b' }}>2</p>
+              <p className="font-inter text-xs" style={{ color: '#64748b' }}>On Schedule</p>
+            </div>
           </div>
 
-          <div className="dispatch-card glass-card p-3">
-            <div className="flex items-center justify-between mb-2">
-              <MapPin className="w-4 h-4 text-magenta" />
+          <div className="glass-card p-3 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#fff7ed' }}>
+              <MapPin className="w-4 h-4" style={{ color: '#f97316' }} />
             </div>
-            <p className="font-sora font-bold text-xl text-white">86.9</p>
-            <p className="font-inter text-xs text-silver/60 mt-0.5">Total Miles Today</p>
+            <div>
+              <p className="font-sora font-bold text-xl" style={{ color: '#1e293b' }}>86.9</p>
+              <p className="font-inter text-xs" style={{ color: '#64748b' }}>Total Miles Today</p>
+            </div>
           </div>
 
-          <div className="dispatch-card glass-card p-3">
-            <div className="flex items-center justify-between mb-2">
-              <Package className="w-4 h-4 text-purple-400" />
+          <div className="glass-card p-3 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#faf5ff' }}>
+              <Package className="w-4 h-4" style={{ color: '#8b5cf6' }} />
             </div>
-            <p className="font-sora font-bold text-xl text-white">113</p>
-            <p className="font-inter text-xs text-silver/60 mt-0.5">Items Delivered</p>
+            <div>
+              <p className="font-sora font-bold text-xl" style={{ color: '#1e293b' }}>113</p>
+              <p className="font-inter text-xs" style={{ color: '#64748b' }}>Items Delivered</p>
+            </div>
           </div>
         </div>
 
-        {/* Dispatch Cards — 4 columns, all visible at once */}
-        <div className="grid grid-cols-4 gap-3 flex-1 min-h-0">
-          {dispatches.map((dispatch, index) => (
-            <div
-              key={index}
-              onClick={() => handleCardClick(dispatch)}
-              className="dispatch-card glass-card p-4 hover:border-cyan/30 transition-all duration-300 cursor-pointer group flex flex-col"
-            >
-              {/* ID + Status */}
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-mono text-xs text-cyan">{dispatch.id}</span>
-                <span className={`px-2 py-0.5 rounded-full text-[9px] font-mono uppercase border ${getStatusColor(dispatch.status)}`}>
-                  {getStatusLabel(dispatch.status)}
-                </span>
-              </div>
+        {/* ── Kanban Board: 3 status columns ── */}
+        <div className="grid grid-cols-3 gap-4 flex-1 min-h-0">
+          {columns.map((col) => {
+            const colDispatches = dispatches.filter(d => d.status === col.status);
+            return (
+              <div key={col.status} className="flex flex-col min-h-0">
+                {/* Column Header */}
+                <div
+                  className="flex items-center justify-between px-3 py-2 rounded-xl mb-3 flex-shrink-0"
+                  style={{
+                    background: col.colorLight,
+                    borderLeft: `3px solid ${col.color}`,
+                    border: `1px solid ${col.colorBorder}`,
+                    borderLeftWidth: '3px',
+                  }}
+                >
+                  <span className="font-sora font-semibold text-sm" style={{ color: col.color }}>
+                    {col.label}
+                  </span>
+                  <span
+                    className="font-mono text-xs px-2 py-0.5 rounded-lg"
+                    style={{ background: col.colorBorder, color: col.color }}
+                  >
+                    {colDispatches.length}
+                  </span>
+                </div>
 
-              {/* Client + Order */}
-              <h3 className="font-sora font-semibold text-sm text-white group-hover:text-cyan transition-colors truncate mb-0.5">
-                {dispatch.client.name}
-              </h3>
-              <p className="font-mono text-[10px] text-silver/50 mb-3">{dispatch.orderRef}</p>
+                {/* Cards */}
+                <div className="flex flex-col gap-3 overflow-y-auto flex-1 min-h-0">
+                  {colDispatches.length === 0 && (
+                    <div
+                      className="rounded-2xl p-6 text-center"
+                      style={{ border: `2px dashed ${col.colorBorder}` }}
+                    >
+                      <p className="font-inter text-xs" style={{ color: '#94a3b8' }}>No dispatches</p>
+                    </div>
+                  )}
+                  {colDispatches.map((dispatch) => (
+                    <div
+                      key={dispatch.id}
+                      onClick={() => handleCardClick(dispatch)}
+                      className="glass-card p-4 cursor-pointer hover:shadow-md transition-all duration-300 group"
+                    >
+                      {/* Reference row */}
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-mono text-[10px]" style={{ color: '#94a3b8' }}>{dispatch.id}</span>
+                        <span
+                          className="font-mono text-[10px] px-2 py-0.5 rounded-lg"
+                          style={{ background: `${col.color}15`, color: col.color }}
+                        >
+                          {dispatch.orderRef}
+                        </span>
+                      </div>
 
-              {/* Progress */}
-              <div className="mb-3">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-mono text-[10px] text-silver/50">Progress</span>
-                  <span className="font-mono text-[10px] text-cyan">{dispatch.progress}%</span>
-                </div>
-                <div className="progress-bar h-1.5">
-                  <div className="progress-bar-fill h-full rounded-full" style={{ width: `${dispatch.progress}%` }} />
+                      {/* Client name */}
+                      <h3
+                        className="font-sora font-semibold text-sm mb-1 group-hover:transition-colors"
+                        style={{ color: '#1e293b' }}
+                      >
+                        {dispatch.client.name}
+                      </h3>
+
+                      {/* Items count */}
+                      <p className="font-inter text-xs mb-3" style={{ color: '#94a3b8' }}>
+                        {dispatch.items.length} item type{dispatch.items.length > 1 ? 's' : ''} ·{' '}
+                        {dispatch.items.reduce((s, i) => s + i.quantity, 0)} units
+                      </p>
+
+                      {/* Progress */}
+                      <div className="mb-3">
+                        <div className="flex justify-between mb-1">
+                          <span className="font-mono text-[10px]" style={{ color: '#94a3b8' }}>Progress</span>
+                          <span className="font-mono text-[10px]" style={{ color: col.color }}>{dispatch.progress}%</span>
+                        </div>
+                        <div className="progress-bar h-1.5" style={{ background: `${col.color}18` }}>
+                          <div
+                            className="h-full rounded-full"
+                            style={{
+                              width: `${dispatch.progress}%`,
+                              background: `linear-gradient(90deg, ${col.color} 0%, ${col.color}cc 100%)`,
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Distance + ETA */}
+                      <div className="flex items-center gap-3 mb-3" style={{ color: '#94a3b8' }}>
+                        <div className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3" />
+                          <span className="font-inter text-[10px]">{dispatch.route.distance}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          <span className="font-inter text-[10px]">ETA {dispatch.eta}</span>
+                        </div>
+                      </div>
+
+                      {/* Driver */}
+                      <div
+                        className="flex items-center gap-2 pt-2"
+                        style={{ borderTop: '1px solid #f1f5f9' }}
+                      >
+                        <Truck className="w-3 h-3" style={{ color: '#cbd5e1' }} />
+                        <span className="font-inter text-[10px] truncate" style={{ color: '#64748b' }}>
+                          {dispatch.driver.name} · {dispatch.driver.vehicle}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-
-              {/* Route */}
-              <div className="flex items-center gap-3 mb-3 text-silver/50">
-                <div className="flex items-center gap-1">
-                  <MapPin className="w-3 h-3" />
-                  <span className="font-inter text-[10px]">{dispatch.route.distance}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  <span className="font-inter text-[10px]">{dispatch.route.estimatedTime}</span>
-                </div>
-              </div>
-
-              {/* Times */}
-              <div className="mt-auto border-t border-white/5 pt-2.5 flex flex-col gap-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-[10px] text-silver/50">Dispatch</span>
-                  <span className="font-mono text-[10px] text-silver/60">{dispatch.dispatchTime}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-[10px] text-silver/50">ETA</span>
-                  <span className="font-mono text-[10px] text-emerald">{dispatch.eta}</span>
-                </div>
-                <div className="flex items-center gap-1 mt-1 text-silver/40">
-                  <Truck className="w-3 h-3" />
-                  <span className="font-inter text-[10px] truncate">{dispatch.driver.name}</span>
-                </div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
       {/* Detail Dialog */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="glass-card border-white/10 max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent
+          className="max-w-2xl max-h-[90vh] overflow-y-auto"
+          style={{ background: '#ffffff', border: '1px solid #e2e8f0' }}
+        >
           {selectedDispatch && (
             <>
               <DialogHeader>
-                <DialogTitle className="font-sora font-bold text-xl text-white">
+                <DialogTitle className="font-sora font-bold text-xl" style={{ color: '#1e293b' }}>
                   <div className="flex items-center gap-3">
-                    <Truck className="w-6 h-6 text-cyan" />
+                    <Truck className="w-6 h-6" style={{ color: '#3b82f6' }} />
                     {selectedDispatch.id}
                   </div>
                 </DialogTitle>
               </DialogHeader>
 
-              <div className="mt-6 space-y-6">
+              <div className="mt-4 space-y-4">
                 {/* Status Banner */}
-                <div className={`p-4 rounded-xl border ${getStatusColor(selectedDispatch.status)}`}>
-                  <div className="flex items-center justify-between">
-                    <span className="font-sora font-semibold">{getStatusLabel(selectedDispatch.status)}</span>
-                    <span className="font-mono text-2xl font-bold">{selectedDispatch.progress}%</span>
-                  </div>
-                  <div className="mt-2 progress-bar h-2">
-                    <div 
-                      className="progress-bar-fill h-full rounded-full"
-                      style={{ width: `${selectedDispatch.progress}%` }}
-                    />
-                  </div>
-                </div>
+                {(() => {
+                  const col = columns.find(c => c.status === selectedDispatch.status)!;
+                  return (
+                    <div
+                      className="p-4 rounded-xl"
+                      style={{ background: col.colorLight, border: `1px solid ${col.colorBorder}` }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-sora font-semibold" style={{ color: col.color }}>{col.label}</span>
+                        <span className="font-mono text-2xl font-bold" style={{ color: col.color }}>{selectedDispatch.progress}%</span>
+                      </div>
+                      <div className="mt-2 h-2 rounded-full overflow-hidden" style={{ background: `${col.color}20` }}>
+                        <div
+                          className="h-full rounded-full"
+                          style={{ width: `${selectedDispatch.progress}%`, background: col.color }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Order Info */}
                 <div className="glass-card p-4">
-                  <h4 className="font-sora font-semibold text-sm text-white mb-3 flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-cyan" />
+                  <h4 className="font-sora font-semibold text-sm mb-3 flex items-center gap-2" style={{ color: '#1e293b' }}>
+                    <FileText className="w-4 h-4" style={{ color: '#3b82f6' }} />
                     Order Information
                   </h4>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="font-mono text-[10px] text-silver/50 uppercase">Order Reference</p>
-                      <p className="font-mono text-sm text-cyan">{selectedDispatch.orderRef}</p>
+                      <p className="font-mono text-[10px] uppercase" style={{ color: '#94a3b8' }}>Order Reference</p>
+                      <p className="font-mono text-sm" style={{ color: '#3b82f6' }}>{selectedDispatch.orderRef}</p>
                     </div>
                     <div>
-                      <p className="font-mono text-[10px] text-silver/50 uppercase">Dispatch Time</p>
-                      <p className="font-inter text-sm text-white">{selectedDispatch.dispatchTime}</p>
+                      <p className="font-mono text-[10px] uppercase" style={{ color: '#94a3b8' }}>Dispatch Time</p>
+                      <p className="font-inter text-sm" style={{ color: '#1e293b' }}>{selectedDispatch.dispatchTime}</p>
                     </div>
                     <div>
-                      <p className="font-mono text-[10px] text-silver/50 uppercase">Estimated Arrival</p>
-                      <p className="font-inter text-sm text-emerald">{selectedDispatch.eta}</p>
+                      <p className="font-mono text-[10px] uppercase" style={{ color: '#94a3b8' }}>Estimated Arrival</p>
+                      <p className="font-inter text-sm" style={{ color: '#22c55e' }}>{selectedDispatch.eta}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Client Info */}
                 <div className="glass-card p-4">
-                  <h4 className="font-sora font-semibold text-sm text-white mb-3 flex items-center gap-2">
-                    <User className="w-4 h-4 text-cyan" />
+                  <h4 className="font-sora font-semibold text-sm mb-3 flex items-center gap-2" style={{ color: '#1e293b' }}>
+                    <User className="w-4 h-4" style={{ color: '#3b82f6' }} />
                     Client Details
                   </h4>
                   <div className="space-y-2">
-                    <p className="font-sora font-medium text-white">{selectedDispatch.client.name}</p>
-                    <div className="flex items-start gap-2 text-silver/60">
+                    <p className="font-sora font-medium" style={{ color: '#1e293b' }}>{selectedDispatch.client.name}</p>
+                    <div className="flex items-start gap-2" style={{ color: '#64748b' }}>
                       <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
                       <p className="font-inter text-sm">{selectedDispatch.client.address}</p>
                     </div>
-                    <p className="font-mono text-sm text-silver/60">{selectedDispatch.client.phone}</p>
+                    <p className="font-mono text-sm" style={{ color: '#94a3b8' }}>{selectedDispatch.client.phone}</p>
                   </div>
                 </div>
 
                 {/* Route Info */}
                 <div className="glass-card p-4">
-                  <h4 className="font-sora font-semibold text-sm text-white mb-3 flex items-center gap-2">
-                    <Navigation className="w-4 h-4 text-cyan" />
+                  <h4 className="font-sora font-semibold text-sm mb-3 flex items-center gap-2" style={{ color: '#1e293b' }}>
+                    <Navigation className="w-4 h-4" style={{ color: '#3b82f6' }} />
                     Route Details
                   </h4>
                   <div className="flex items-center gap-4">
                     <div className="flex-1">
-                      <p className="font-mono text-[10px] text-silver/50 uppercase">From</p>
-                      <p className="font-inter text-sm text-white">{selectedDispatch.route.from}</p>
+                      <p className="font-mono text-[10px] uppercase" style={{ color: '#94a3b8' }}>From</p>
+                      <p className="font-inter text-sm" style={{ color: '#1e293b' }}>{selectedDispatch.route.from}</p>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-silver/30" />
+                    <ChevronRight className="w-5 h-5" style={{ color: '#cbd5e1' }} />
                     <div className="flex-1">
-                      <p className="font-mono text-[10px] text-silver/50 uppercase">To</p>
-                      <p className="font-inter text-sm text-white">{selectedDispatch.route.to}</p>
+                      <p className="font-mono text-[10px] uppercase" style={{ color: '#94a3b8' }}>To</p>
+                      <p className="font-inter text-sm" style={{ color: '#1e293b' }}>{selectedDispatch.route.to}</p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-white/5">
+                  <div className="grid grid-cols-2 gap-4 mt-4 pt-4" style={{ borderTop: '1px solid #f1f5f9' }}>
                     <div>
-                      <p className="font-mono text-[10px] text-silver/50 uppercase">Distance</p>
-                      <p className="font-inter text-sm text-white">{selectedDispatch.route.distance}</p>
+                      <p className="font-mono text-[10px] uppercase" style={{ color: '#94a3b8' }}>Distance</p>
+                      <p className="font-inter text-sm" style={{ color: '#1e293b' }}>{selectedDispatch.route.distance}</p>
                     </div>
                     <div>
-                      <p className="font-mono text-[10px] text-silver/50 uppercase">Est. Time</p>
-                      <p className="font-inter text-sm text-white">{selectedDispatch.route.estimatedTime}</p>
+                      <p className="font-mono text-[10px] uppercase" style={{ color: '#94a3b8' }}>Est. Time</p>
+                      <p className="font-inter text-sm" style={{ color: '#1e293b' }}>{selectedDispatch.route.estimatedTime}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Driver Info */}
                 <div className="glass-card p-4">
-                  <h4 className="font-sora font-semibold text-sm text-white mb-3 flex items-center gap-2">
-                    <Truck className="w-4 h-4 text-cyan" />
+                  <h4 className="font-sora font-semibold text-sm mb-3 flex items-center gap-2" style={{ color: '#1e293b' }}>
+                    <Truck className="w-4 h-4" style={{ color: '#3b82f6' }} />
                     Driver Information
                   </h4>
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <p className="font-mono text-[10px] text-silver/50 uppercase">Name</p>
-                      <p className="font-inter text-sm text-white">{selectedDispatch.driver.name}</p>
+                      <p className="font-mono text-[10px] uppercase" style={{ color: '#94a3b8' }}>Name</p>
+                      <p className="font-inter text-sm" style={{ color: '#1e293b' }}>{selectedDispatch.driver.name}</p>
                     </div>
                     <div>
-                      <p className="font-mono text-[10px] text-silver/50 uppercase">Vehicle</p>
-                      <p className="font-inter text-sm text-white">{selectedDispatch.driver.vehicle}</p>
+                      <p className="font-mono text-[10px] uppercase" style={{ color: '#94a3b8' }}>Vehicle</p>
+                      <p className="font-inter text-sm" style={{ color: '#1e293b' }}>{selectedDispatch.driver.vehicle}</p>
                     </div>
                     <div>
-                      <p className="font-mono text-[10px] text-silver/50 uppercase">Contact</p>
-                      <p className="font-mono text-sm text-silver/60">{selectedDispatch.driver.phone}</p>
+                      <p className="font-mono text-[10px] uppercase" style={{ color: '#94a3b8' }}>Contact</p>
+                      <p className="font-mono text-sm" style={{ color: '#94a3b8' }}>{selectedDispatch.driver.phone}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Items */}
                 <div className="glass-card p-4">
-                  <h4 className="font-sora font-semibold text-sm text-white mb-3 flex items-center gap-2">
-                    <Box className="w-4 h-4 text-cyan" />
+                  <h4 className="font-sora font-semibold text-sm mb-3 flex items-center gap-2" style={{ color: '#1e293b' }}>
+                    <Box className="w-4 h-4" style={{ color: '#3b82f6' }} />
                     Order Items
                   </h4>
                   <div className="space-y-2">
                     {selectedDispatch.items.map((item, idx) => (
-                      <div key={idx} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between py-2"
+                        style={{ borderBottom: idx < selectedDispatch.items.length - 1 ? '1px solid #f1f5f9' : 'none' }}
+                      >
                         <div>
-                          <p className="font-inter text-sm text-white">{item.name}</p>
-                          <p className="font-mono text-[10px] text-cyan">{item.sku}</p>
+                          <p className="font-inter text-sm" style={{ color: '#1e293b' }}>{item.name}</p>
+                          <p className="font-mono text-[10px]" style={{ color: '#3b82f6' }}>{item.sku}</p>
                         </div>
-                        <span className="font-mono text-sm text-silver/60">x{item.quantity}</span>
+                        <span className="font-mono text-sm" style={{ color: '#64748b' }}>x{item.quantity}</span>
                       </div>
                     ))}
                   </div>
-                  <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between">
-                    <span className="font-inter text-sm text-silver/60">Total Items</span>
-                    <span className="font-sora font-bold text-white">
+                  <div
+                    className="mt-4 pt-3 flex items-center justify-between"
+                    style={{ borderTop: '1px solid #e2e8f0' }}
+                  >
+                    <span className="font-inter text-sm" style={{ color: '#64748b' }}>Total Items</span>
+                    <span className="font-sora font-bold" style={{ color: '#1e293b' }}>
                       {selectedDispatch.items.reduce((sum, item) => sum + item.quantity, 0)}
                     </span>
                   </div>

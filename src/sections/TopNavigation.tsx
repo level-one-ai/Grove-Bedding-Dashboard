@@ -37,50 +37,47 @@ export default function TopNavigation({ activePage, setActivePage }: Props) {
       ref={navRef}
       className="fixed top-16 left-0 right-0 z-[90] flex justify-center pt-1"
     >
-      <div className="glass-card px-2 py-2 flex items-center gap-1">
+      <div
+        className="px-2 py-1.5 flex items-center gap-1 rounded-2xl"
+        style={{
+          background: 'rgba(255, 255, 255, 0.92)',
+          backdropFilter: 'blur(20px)',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+        }}
+      >
         {navItems.map((item, index) => (
           <button
             key={index}
             onClick={() => setActivePage(item.pageId)}
-            className={`top-nav-item relative flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-300 group ${
-              activeIndex === index
-                ? 'bg-blue/20'
-                : 'hover:bg-white/5'
-            }`}
-          >
-            {/* Glow effect on hover */}
-            <div className={`absolute inset-0 rounded-xl transition-opacity duration-300 ${
-              activeIndex === index
-                ? 'opacity-100 bg-blue/10'
-                : 'opacity-0 group-hover:opacity-100'
-            }`}
+            className="top-nav-item relative flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300 group"
             style={{
-              boxShadow: activeIndex === index
-                ? '0 0 20px rgba(0, 150, 255, 0.3), inset 0 0 10px rgba(0, 150, 255, 0.1)'
-                : 'none'
+              background: activeIndex === index ? '#fff7ed' : 'transparent',
+              border: activeIndex === index ? '1px solid #fed7aa' : '1px solid transparent',
             }}
-            />
-
+          >
             <item.icon
-              className={`w-4 h-4 transition-all duration-300 relative z-10 ${
-                activeIndex === index
-                  ? 'text-blue scale-110'
-                  : 'text-silver/50 group-hover:text-blue/80 group-hover:scale-105'
-              }`}
+              className="w-4 h-4 transition-all duration-300"
+              style={{
+                color: activeIndex === index ? '#f97316' : '#94a3b8',
+              }}
             />
             <span
-              className={`font-sora text-xs tracking-wide transition-all duration-300 relative z-10 ${
-                activeIndex === index
-                  ? 'text-blue font-semibold'
-                  : 'text-silver/60 group-hover:text-silver/90'
-              }`}
+              className="font-sora text-xs tracking-wide transition-all duration-300"
+              style={{
+                color: activeIndex === index ? '#f97316' : '#64748b',
+                fontWeight: activeIndex === index ? 600 : 400,
+              }}
             >
               {item.label}
             </span>
 
             {/* Active indicator line */}
             {activeIndex === index && (
-              <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-gradient-to-r from-transparent via-blue to-transparent rounded-full" />
+              <div
+                className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full"
+                style={{ background: '#f97316' }}
+              />
             )}
           </button>
         ))}
