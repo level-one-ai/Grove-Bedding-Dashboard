@@ -104,7 +104,7 @@ export default function AutomationStream() {
       id="logs"
       ref={sectionRef}
       className="relative w-full h-full overflow-hidden"
-      style={{ background: '#f5f6fa' }}
+      style={{ background: '#ffffff' }}
     >
       {/* Subtle dot grid */}
       <div
@@ -121,9 +121,9 @@ export default function AutomationStream() {
           <div className="flex items-center gap-3">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ background: '#fff7ed', border: '1px solid #fed7aa' }}
+              style={{ background: '#f0f9ff', border: '1px solid #bae6fd' }}
             >
-              <Clock className="w-4 h-4" style={{ color: '#f97316' }} />
+              <Clock className="w-4 h-4" style={{ color: '#0ea5e9' }} />
             </div>
             <div>
               <h2 className="font-sora font-bold text-xl" style={{ color: '#1e293b' }}>
@@ -239,7 +239,7 @@ export default function AutomationStream() {
                         <p className="font-mono text-[10px]" style={{ color: '#94a3b8' }}>
                           Result: {entry.result}{pendingStep ? ` · ${pendingStep.label}` : ''}
                         </p>
-                        <button className="flex items-center gap-1 text-[10px] font-sora" style={{ color: '#f97316' }}>
+                        <button className="flex items-center gap-1 text-[10px] font-sora" style={{ color: '#0ea5e9' }}>
                           <RefreshCw className="w-3 h-3" /> Retry
                         </button>
                       </div>

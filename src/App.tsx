@@ -38,7 +38,7 @@ function App() {
   }, []);
 
   return (
-    <div className="relative overflow-hidden" style={{ height: '100vh', background: '#f5f6fa' }}>
+    <div className="relative overflow-hidden" style={{ height: '100vh', background: '#ffffff' }}>
       {/* Noise Overlay */}
       <div className="noise-overlay" />
 
@@ -80,7 +80,7 @@ function App() {
                 </p>
                 <button
                   className="mt-2 flex items-center gap-1 text-[11px] font-sora font-medium"
-                  style={{ color: '#f97316' }}
+                  style={{ color: '#0ea5e9' }}
                 >
                   <RefreshCw className="w-3 h-3" />
                   Retry Automation

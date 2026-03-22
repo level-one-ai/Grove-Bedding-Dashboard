@@ -32,9 +32,9 @@ export default function Header() {
         <div className="flex items-center gap-3">
           <div
             className="w-9 h-9 rounded-xl flex items-center justify-center"
-            style={{ background: '#fff7ed', border: '1px solid #fed7aa' }}
+            style={{ background: '#f0f9ff', border: '1px solid #bae6fd' }}
           >
-            <Leaf className="w-4 h-4" style={{ color: '#f97316' }} />
+            <Leaf className="w-4 h-4" style={{ color: '#0ea5e9' }} />
           </div>
           <div>
             <span className="font-sora font-semibold text-lg tracking-tight" style={{ color: '#1e293b' }}>
@@ -50,7 +50,7 @@ export default function Header() {
             className="flex items-center gap-2 px-3 py-1.5 rounded-xl"
             style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}
           >
-            <Activity className="w-3.5 h-3.5 animate-pulse" style={{ color: '#f97316' }} />
+            <Activity className="w-3.5 h-3.5 animate-pulse" style={{ color: '#0ea5e9' }} />
             <span className="font-mono text-xs" style={{ color: '#64748b' }}>System Load: 42%</span>
           </div>
           <div

@@ -13,7 +13,6 @@ import {
   Brain,
   Truck,
   Printer,
-  Activity,
   Database,
   CheckCircle2,
 } from 'lucide-react';
@@ -24,7 +23,7 @@ const automationCards = [
   { icon: Bell, label: 'ALERTS', desc: 'Print Label Automation', progress: 62, color: '#f59e0b' },
   { icon: Film, label: 'MONITOR', desc: 'Graph Site Monitoring', progress: 62, color: '#8b5cf6' },
   { icon: UtensilsCrossed, label: 'STOCK', desc: 'Bedding Stock Levels', progress: 65, color: '#22c55e' },
-  { icon: ShoppingBag, label: 'ACCOUNTS', desc: 'Customer Accounts', progress: 45, color: '#f97316' },
+  { icon: ShoppingBag, label: 'ACCOUNTS', desc: 'Customer Accounts', progress: 45, color: '#0ea5e9' },
 ];
 
 const workflowSteps = [
@@ -74,7 +73,7 @@ export default function DashboardHero() {
       id="dashboard"
       ref={sectionRef}
       className="relative w-full h-full overflow-hidden"
-      style={{ background: '#f5f6fa' }}
+      style={{ background: '#ffffff' }}
     >
       {/* Subtle dot grid */}
       <div
@@ -151,27 +150,8 @@ export default function DashboardHero() {
             </div>
           </div>
 
-          {/* KPI area: System Load + stacked Orders+Syncs */}
-          <div className="grid grid-cols-3 gap-3 flex-1 min-h-0">
-
-            {/* System Load */}
-            <div className="glass-card p-5 flex flex-col gap-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#fff7ed' }}>
-                  <Activity className="w-4 h-4" style={{ color: '#f97316' }} />
-                </div>
-                <p className="font-mono text-[10px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>System Load</p>
-              </div>
-              <div>
-                <p className="font-sora font-bold text-3xl" style={{ color: '#1e293b' }}>42%</p>
-                <div className="progress-bar h-1.5 mt-2">
-                  <div className="progress-bar-fill" style={{ width: '42%' }} />
-                </div>
-              </div>
-            </div>
-
-            {/* Orders Today + Active Syncs stacked */}
-            <div className="col-span-2 flex flex-col gap-3 min-h-0">
+          {/* Orders Today + Active Syncs — full width stacked */}
+          <div className="flex flex-col gap-3 flex-1 min-h-0">
 
               {/* Orders Today — expanded with list */}
               <div className="glass-card p-4 flex-1 flex flex-col min-h-0">
@@ -192,7 +172,7 @@ export default function DashboardHero() {
                       style={{ borderBottom: idx < ordersToday.length - 1 ? '1px solid #f1f5f9' : 'none' }}
                     >
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-mono text-[10px] flex-shrink-0" style={{ color: '#f97316' }}>{order.ref}</span>
+                        <span className="font-mono text-[10px] flex-shrink-0" style={{ color: '#0ea5e9' }}>{order.ref}</span>
                         <span className="font-inter text-xs truncate" style={{ color: '#334155' }}>{order.client}</span>
                       </div>
                       <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
@@ -236,7 +216,6 @@ export default function DashboardHero() {
                 </div>
               </div>
 
-            </div>
           </div>
         </div>
 

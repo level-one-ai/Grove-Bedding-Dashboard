@@ -12,28 +12,28 @@
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    --primary: 24 95% 53%;
+    --primary: 199 89% 48%;
     --primary-foreground: 0 0% 100%;
     --secondary: 220 13% 91%;
     --secondary-foreground: 222 47% 11%;
     --muted: 220 13% 91%;
     --muted-foreground: 220 9% 46%;
-    --accent: 24 95% 53%;
+    --accent: 199 89% 48%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 24 95% 53%;
+    --ring: 199 89% 48%;
     --radius: 0.75rem;
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 24 95% 53%;
+    --sidebar-primary: 199 89% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 220 13% 91%;
     --sidebar-accent-foreground: 222 47% 11%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 24 95% 53%;
+    --sidebar-ring: 199 89% 48%;
   }
 }
 
@@ -44,7 +44,7 @@
 
   body {
     @apply text-foreground font-inter antialiased;
-    background: #f5f6fa;
+    background: #ffffff;
     color: #1e293b;
     min-height: 100vh;
     overflow-x: hidden;
@@ -58,8 +58,8 @@
     background: #ffffff;
     border-color: #e2e8f0;
     box-shadow:
-      0 1px 3px rgba(0, 0, 0, 0.06),
-      0 4px 16px rgba(0, 0, 0, 0.04);
+      0 2px 8px rgba(0, 0, 0, 0.08),
+      0 8px 24px rgba(0, 0, 0, 0.06);
   }
 
   .glass-card-light {
@@ -199,26 +199,26 @@
   /* Button Styles */
   .btn-primary {
     @apply px-6 py-3 rounded-xl font-sora font-semibold text-sm transition-all duration-200;
-    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
     color: #ffffff;
-    box-shadow: 0 4px 14px rgba(249, 115, 22, 0.35);
+    box-shadow: 0 4px 14px rgba(14, 165, 233, 0.35);
   }
 
   .btn-primary:hover {
     transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(249, 115, 22, 0.45);
+    box-shadow: 0 6px 20px rgba(14, 165, 233, 0.45);
   }
 
   .btn-outline {
     @apply px-6 py-3 rounded-xl font-sora font-semibold text-sm transition-all duration-200 border;
     background: transparent;
-    border-color: rgba(249, 115, 22, 0.4);
-    color: #f97316;
+    border-color: rgba(14, 165, 233, 0.4);
+    color: #0ea5e9;
   }
 
   .btn-outline:hover {
-    background: rgba(249, 115, 22, 0.06);
-    border-color: rgba(249, 115, 22, 0.6);
+    background: rgba(14, 165, 233, 0.06);
+    border-color: rgba(14, 165, 233, 0.6);
   }
 
   .btn-cyan {
@@ -283,7 +283,7 @@
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #f97316;
+    background: #0ea5e9;
   }
 }
 
@@ -361,12 +361,12 @@
 
 /* Selection color */
 ::selection {
-  background: rgba(249, 115, 22, 0.2);
+  background: rgba(14, 165, 233, 0.2);
   color: #1e293b;
 }
 
 /* Focus visible for accessibility */
 :focus-visible {
-  outline: 2px solid rgba(249, 115, 22, 0.5);
+  outline: 2px solid rgba(14, 165, 233, 0.5);
   outline-offset: 2px;
 }

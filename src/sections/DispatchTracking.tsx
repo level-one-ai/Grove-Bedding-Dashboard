@@ -198,7 +198,7 @@ export default function DispatchTracking() {
       id="dispatch"
       ref={sectionRef}
       className="relative w-full h-full overflow-hidden"
-      style={{ background: '#f5f6fa' }}
+      style={{ background: '#ffffff' }}
     >
       {/* Subtle dot grid */}
       <div
@@ -252,8 +252,8 @@ export default function DispatchTracking() {
           </div>
 
           <div className="glass-card p-3 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#fff7ed' }}>
-              <MapPin className="w-4 h-4" style={{ color: '#f97316' }} />
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#f0f9ff' }}>
+              <MapPin className="w-4 h-4" style={{ color: '#0ea5e9' }} />
             </div>
             <div>
               <p className="font-sora font-bold text-xl" style={{ color: '#1e293b' }}>86.9</p>

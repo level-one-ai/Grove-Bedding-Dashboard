@@ -52,20 +52,20 @@ export default function TopNavigation({ activePage, setActivePage }: Props) {
             onClick={() => setActivePage(item.pageId)}
             className="top-nav-item relative flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300 group"
             style={{
-              background: activeIndex === index ? '#fff7ed' : 'transparent',
-              border: activeIndex === index ? '1px solid #fed7aa' : '1px solid transparent',
+              background: activeIndex === index ? '#f0f9ff' : 'transparent',
+              border: activeIndex === index ? '1px solid #bae6fd' : '1px solid transparent',
             }}
           >
             <item.icon
               className="w-4 h-4 transition-all duration-300"
               style={{
-                color: activeIndex === index ? '#f97316' : '#94a3b8',
+                color: activeIndex === index ? '#0ea5e9' : '#94a3b8',
               }}
             />
             <span
               className="font-sora text-xs tracking-wide transition-all duration-300"
               style={{
-                color: activeIndex === index ? '#f97316' : '#64748b',
+                color: activeIndex === index ? '#0ea5e9' : '#64748b',
                 fontWeight: activeIndex === index ? 600 : 400,
               }}
             >
@@ -76,7 +76,7 @@ export default function TopNavigation({ activePage, setActivePage }: Props) {
             {activeIndex === index && (
               <div
                 className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full"
-                style={{ background: '#f97316' }}
+                style={{ background: '#0ea5e9' }}
               />
             )}
           </button>
