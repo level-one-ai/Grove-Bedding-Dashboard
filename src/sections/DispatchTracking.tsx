@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
-import { Truck, Clock, MapPin, Package, Calendar, User, FileText, Box, ChevronRight, Navigation } from 'lucide-react';
+import { Truck, Clock, MapPin, Package, User, FileText, Box, ChevronRight, Navigation } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface Dispatch {
