@@ -12,8 +12,9 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts';
-import { Package, AlertTriangle, ShoppingCart, TrendingUp, Warehouse } from 'lucide-react';
+import { Package, AlertTriangle, ShoppingCart, TrendingUp, Warehouse, Plus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import type { PageId } from '../App';
 
 const stockItems = [
   { id: 'SKU-001', name: 'Memory Foam Mattress', category: 'Mattresses', current: 45, max: 100, reorderAt: 30, supplier: 'SleepTech Corp' },
@@ -51,7 +52,11 @@ interface StockItem {
   supplier: string;
 }
 
-// White tooltip for charts — dark text on white background
+interface Props {
+  setActivePage: (page: PageId) => void;
+}
+
+// White tooltip for charts
 const tooltipStyle = {
   background: '#ffffff',
   border: '1px solid #e2e8f0',
@@ -63,7 +68,7 @@ const tooltipStyle = {
 
 const tooltipLabelStyle = { color: '#1e293b', fontWeight: 600 };
 
-export default function StockManagement() {
+export default function StockManagement({ setActivePage }: Props) {
   const sectionRef = useRef<HTMLDivElement>(null);
   const [selectedItem, setSelectedItem] = useState<StockItem | null>(null);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
@@ -99,6 +104,9 @@ export default function StockManagement() {
     setTimeout(() => setOrderDialogOpen(false), 2000);
   };
 
+  const totalUnits = stockItems.reduce((sum, item) => sum + item.current, 0);
+  const lowStockCount = stockItems.filter(item => getStockStatus(item.current, item.reorderAt) !== 'good').length;
+
   return (
     <div
       id="stock"
@@ -133,60 +141,10 @@ export default function StockManagement() {
           </div>
         </div>
 
-        {/* ── Stats Row ── */}
-        <div className="grid grid-cols-4 gap-3 mb-4 flex-shrink-0">
-
-          <div className="glass-card p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#f0f9ff' }}>
-                <Package className="w-4 h-4" style={{ color: '#0ea5e9' }} />
-              </div>
-              <span className="font-mono text-[10px] flex items-center gap-1" style={{ color: '#22c55e' }}>
-                <TrendingUp className="w-3 h-3" /> +12%
-              </span>
-            </div>
-            <p className="font-sora font-bold text-2xl" style={{ color: '#1e293b' }}>397</p>
-            <p className="font-inter text-xs mt-0.5" style={{ color: '#64748b' }}>Total Units</p>
-          </div>
-
-          <div className="glass-card p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#fef2f2' }}>
-                <AlertTriangle className="w-4 h-4" style={{ color: '#ef4444' }} />
-              </div>
-              <span className="font-mono text-[10px]" style={{ color: '#ef4444' }}>Action Needed</span>
-            </div>
-            <p className="font-sora font-bold text-2xl" style={{ color: '#1e293b' }}>2</p>
-            <p className="font-inter text-xs mt-0.5" style={{ color: '#64748b' }}>Low Stock Items</p>
-          </div>
-
-          <div className="glass-card p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#f0fdf4' }}>
-                <TrendingUp className="w-4 h-4" style={{ color: '#22c55e' }} />
-              </div>
-              <span className="font-mono text-[10px]" style={{ color: '#22c55e' }}>Healthy</span>
-            </div>
-            <p className="font-sora font-bold text-2xl" style={{ color: '#1e293b' }}>68%</p>
-            <p className="font-inter text-xs mt-0.5" style={{ color: '#64748b' }}>Avg Stock Level</p>
-          </div>
-
-          <div className="glass-card p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#faf5ff' }}>
-                <ShoppingCart className="w-4 h-4" style={{ color: '#8b5cf6' }} />
-              </div>
-              <span className="font-mono text-[10px]" style={{ color: '#8b5cf6' }}>Pending</span>
-            </div>
-            <p className="font-sora font-bold text-2xl" style={{ color: '#1e293b' }}>3</p>
-            <p className="font-inter text-xs mt-0.5" style={{ color: '#64748b' }}>Open Orders</p>
-          </div>
-        </div>
-
-        {/* ── Body: Charts | Inventory Table ── */}
+        {/* ── Body: Charts | Stats + Inventory Table ── */}
         <div className="flex-1 grid grid-cols-5 gap-4 min-h-0">
 
-          {/* Left: Charts stacked */}
+          {/* Left: Charts stacked — fills full height */}
           <div className="col-span-2 flex flex-col gap-4 min-h-0">
 
             {/* Pie Chart — Stock by Category */}
@@ -201,8 +159,8 @@ export default function StockManagement() {
                       data={categoryData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={36}
-                      outerRadius={60}
+                      innerRadius={46}
+                      outerRadius={78}
                       paddingAngle={3}
                       dataKey="value"
                       animationBegin={0}
@@ -282,139 +240,187 @@ export default function StockManagement() {
 
           </div>
 
-          {/* Right: Inventory Items Table */}
-          <div className="col-span-3 glass-card flex flex-col min-h-0 overflow-hidden">
+          {/* Right: Stats row + Inventory Items Table */}
+          <div className="col-span-3 flex flex-col gap-4 min-h-0">
 
-            <div className="px-4 pt-4 pb-3 flex-shrink-0" style={{ borderBottom: '1px solid #f1f5f9' }}>
-              <h3 className="font-sora font-semibold text-sm" style={{ color: '#1e293b' }}>
-                Inventory Items
-              </h3>
-              <p className="font-inter text-xs mt-0.5" style={{ color: '#94a3b8' }}>
-                Click Order to restock low or critical items
-              </p>
+            {/* Stats Row — 2 widgets above the table */}
+            <div className="flex gap-4 flex-shrink-0">
+
+              <div className="glass-card p-4 flex-1">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#f0f9ff' }}>
+                    <Package className="w-4 h-4" style={{ color: '#0ea5e9' }} />
+                  </div>
+                  <span className="font-mono text-[10px] flex items-center gap-1" style={{ color: '#22c55e' }}>
+                    <TrendingUp className="w-3 h-3" /> +12%
+                  </span>
+                </div>
+                <p className="font-sora font-bold text-2xl" style={{ color: '#1e293b' }}>{totalUnits}</p>
+                <p className="font-inter text-xs mt-0.5" style={{ color: '#64748b' }}>Total Units</p>
+              </div>
+
+              <div className="glass-card p-4 flex-1">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#fef2f2' }}>
+                    <AlertTriangle className="w-4 h-4" style={{ color: '#ef4444' }} />
+                  </div>
+                  <span className="font-mono text-[10px]" style={{ color: '#ef4444' }}>Action Needed</span>
+                </div>
+                <p className="font-sora font-bold text-2xl" style={{ color: '#1e293b' }}>{lowStockCount}</p>
+                <p className="font-inter text-xs mt-0.5" style={{ color: '#64748b' }}>Low Stock Items</p>
+              </div>
+
             </div>
 
-            <div className="overflow-y-auto flex-1 min-h-0">
-              <table className="w-full">
-                <thead className="sticky top-0 z-10" style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                  <tr>
-                    <th className="text-left py-2.5 px-4 font-mono text-[10px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>SKU</th>
-                    <th className="text-left py-2.5 px-4 font-mono text-[10px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>Product</th>
-                    <th className="text-left py-2.5 px-4 font-mono text-[10px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>Supplier</th>
-                    <th className="text-left py-2.5 px-4 font-mono text-[10px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>Stock</th>
-                    <th className="text-left py-2.5 px-4 font-mono text-[10px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>Status</th>
-                    <th className="text-left py-2.5 px-4 font-mono text-[10px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stockItems.map((item, index) => {
-                    const percentage = getStockPercentage(item.current, item.max);
-                    const status = getStockStatus(item.current, item.reorderAt);
-                    const isLast = index === stockItems.length - 1;
-                    return (
-                      <tr
-                        key={index}
-                        style={{ borderBottom: isLast ? 'none' : '1px solid #f1f5f9' }}
-                        className="hover:bg-slate-50 transition-colors"
-                      >
-                        {/* SKU */}
-                        <td className="py-3 px-4">
-                          <span className="font-mono text-xs" style={{ color: '#0ea5e9' }}>{item.id}</span>
-                        </td>
+            {/* Inventory Items Table */}
+            <div className="glass-card flex flex-col flex-1 min-h-0 overflow-hidden">
 
-                        {/* Product */}
-                        <td className="py-3 px-4">
-                          <span className="font-inter text-sm font-medium" style={{ color: '#1e293b' }}>{item.name}</span>
-                          <p className="font-inter text-[10px] mt-0.5" style={{ color: '#94a3b8' }}>{item.category}</p>
-                        </td>
+              <div className="px-4 pt-4 pb-3 flex-shrink-0 flex items-center justify-between" style={{ borderBottom: '1px solid #f1f5f9' }}>
+                <div>
+                  <h3 className="font-sora font-semibold text-sm" style={{ color: '#1e293b' }}>
+                    Inventory Items
+                  </h3>
+                  <p className="font-inter text-xs mt-0.5" style={{ color: '#94a3b8' }}>
+                    Click Order to restock low or critical items
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActivePage('orders')}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl font-sora font-semibold text-xs transition-all"
+                  style={{
+                    background: '#0ea5e9',
+                    color: '#ffffff',
+                    boxShadow: '0 2px 10px rgba(14,165,233,0.3)',
+                  }}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Make an Order
+                </button>
+              </div>
 
-                        {/* Supplier */}
-                        <td className="py-3 px-4">
-                          <span className="font-inter text-xs" style={{ color: '#64748b' }}>{item.supplier}</span>
-                        </td>
+              <div className="overflow-y-auto flex-1 min-h-0">
+                <table className="w-full">
+                  <thead className="sticky top-0 z-10" style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                    <tr>
+                      <th className="text-left py-2.5 px-4 font-mono text-[10px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>SKU</th>
+                      <th className="text-left py-2.5 px-4 font-mono text-[10px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>Product</th>
+                      <th className="text-left py-2.5 px-4 font-mono text-[10px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>Supplier</th>
+                      <th className="text-left py-2.5 px-4 font-mono text-[10px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>Stock</th>
+                      <th className="text-left py-2.5 px-4 font-mono text-[10px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>Status</th>
+                      <th className="text-left py-2.5 px-4 font-mono text-[10px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stockItems.map((item, index) => {
+                      const percentage = getStockPercentage(item.current, item.max);
+                      const status = getStockStatus(item.current, item.reorderAt);
+                      const isLast = index === stockItems.length - 1;
+                      return (
+                        <tr
+                          key={index}
+                          style={{ borderBottom: isLast ? 'none' : '1px solid #f1f5f9' }}
+                          className="hover:bg-slate-50 transition-colors"
+                        >
+                          {/* SKU */}
+                          <td className="py-3 px-4">
+                            <span className="font-mono text-xs" style={{ color: '#0ea5e9' }}>{item.id}</span>
+                          </td>
 
-                        {/* Stock level */}
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-20 rounded-full overflow-hidden" style={{ height: '6px', background: '#f1f5f9' }}>
-                              <div
-                                className="h-full rounded-full transition-all"
-                                style={{
-                                  width: `${percentage}%`,
-                                  background:
-                                    status === 'critical' ? '#ef4444' :
-                                    status === 'warning' ? '#f59e0b' :
-                                    '#22c55e',
-                                }}
-                              />
+                          {/* Product */}
+                          <td className="py-3 px-4">
+                            <span className="font-inter text-sm font-medium" style={{ color: '#1e293b' }}>{item.name}</span>
+                            <p className="font-inter text-[10px] mt-0.5" style={{ color: '#94a3b8' }}>{item.category}</p>
+                          </td>
+
+                          {/* Supplier */}
+                          <td className="py-3 px-4">
+                            <span className="font-inter text-xs" style={{ color: '#64748b' }}>{item.supplier}</span>
+                          </td>
+
+                          {/* Stock level */}
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <div className="w-20 rounded-full overflow-hidden" style={{ height: '6px', background: '#f1f5f9' }}>
+                                <div
+                                  className="h-full rounded-full transition-all"
+                                  style={{
+                                    width: `${percentage}%`,
+                                    background:
+                                      status === 'critical' ? '#ef4444' :
+                                      status === 'warning' ? '#f59e0b' :
+                                      '#22c55e',
+                                  }}
+                                />
+                              </div>
+                              <span className="font-mono text-[11px]" style={{ color: '#64748b' }}>
+                                {item.current}<span style={{ color: '#cbd5e1' }}>/{item.max}</span>
+                              </span>
                             </div>
-                            <span className="font-mono text-[11px]" style={{ color: '#64748b' }}>
-                              {item.current}<span style={{ color: '#cbd5e1' }}>/{item.max}</span>
-                            </span>
-                          </div>
-                        </td>
+                          </td>
 
-                        {/* Status badge */}
-                        <td className="py-3 px-4">
-                          <span
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium"
-                            style={{
-                              background:
-                                status === 'critical' ? '#fef2f2' :
-                                status === 'warning' ? '#fffbeb' :
-                                '#f0fdf4',
-                              color:
-                                status === 'critical' ? '#dc2626' :
-                                status === 'warning' ? '#d97706' :
-                                '#16a34a',
-                              border:
-                                status === 'critical' ? '1px solid #fecaca' :
-                                status === 'warning' ? '1px solid #fde68a' :
-                                '1px solid #bbf7d0',
-                            }}
-                          >
+                          {/* Status badge */}
+                          <td className="py-3 px-4">
                             <span
-                              className="w-1.5 h-1.5 rounded-full"
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium"
                               style={{
                                 background:
+                                  status === 'critical' ? '#fef2f2' :
+                                  status === 'warning' ? '#fffbeb' :
+                                  '#f0fdf4',
+                                color:
                                   status === 'critical' ? '#dc2626' :
                                   status === 'warning' ? '#d97706' :
                                   '#16a34a',
+                                border:
+                                  status === 'critical' ? '1px solid #fecaca' :
+                                  status === 'warning' ? '1px solid #fde68a' :
+                                  '1px solid #bbf7d0',
                               }}
-                            />
-                            {status === 'critical' ? 'Reorder' : status === 'warning' ? 'Low' : 'Good'}
-                          </span>
-                        </td>
+                            >
+                              <span
+                                className="w-1.5 h-1.5 rounded-full"
+                                style={{
+                                  background:
+                                    status === 'critical' ? '#dc2626' :
+                                    status === 'warning' ? '#d97706' :
+                                    '#16a34a',
+                                }}
+                              />
+                              {status === 'critical' ? 'Reorder' : status === 'warning' ? 'Low' : 'Good'}
+                            </span>
+                          </td>
 
-                        {/* Action button */}
-                        <td className="py-3 px-4">
-                          <button
-                            onClick={() => handleOrderClick(item)}
-                            disabled={status === 'good'}
-                            className="px-3 py-1.5 rounded-lg text-xs font-sora font-semibold transition-all"
-                            style={
-                              status !== 'good'
-                                ? {
-                                    background: '#0ea5e9',
-                                    color: '#ffffff',
-                                    boxShadow: '0 2px 8px rgba(14,165,233,0.3)',
-                                  }
-                                : {
-                                    background: '#f1f5f9',
-                                    color: '#94a3b8',
-                                    cursor: 'not-allowed',
-                                  }
-                            }
-                          >
-                            Order
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                          {/* Action button */}
+                          <td className="py-3 px-4">
+                            <button
+                              onClick={() => handleOrderClick(item)}
+                              disabled={status === 'good'}
+                              className="px-3 py-1.5 rounded-lg text-xs font-sora font-semibold transition-all"
+                              style={
+                                status !== 'good'
+                                  ? {
+                                      background: '#0ea5e9',
+                                      color: '#ffffff',
+                                      boxShadow: '0 2px 8px rgba(14,165,233,0.3)',
+                                    }
+                                  : {
+                                      background: '#f1f5f9',
+                                      color: '#94a3b8',
+                                      cursor: 'not-allowed',
+                                    }
+                              }
+                            >
+                              Order
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
+
           </div>
 
         </div>
