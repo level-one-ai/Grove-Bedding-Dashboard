@@ -12,8 +12,9 @@ import AutomationStream from './sections/AutomationStream';
 import DispatchTracking from './sections/DispatchTracking';
 import LabelManagement from './sections/LabelManagement';
 import BirleaOrders from './sections/BirleaOrders';
+import OutboundCalls from './sections/OutboundCalls';
 
-export type PageId = 'dashboard' | 'stock' | 'logs' | 'dispatch' | 'labels' | 'orders';
+export type PageId = 'dashboard' | 'stock' | 'logs' | 'dispatch' | 'labels' | 'orders' | 'calls';
 
 // ── Shared label types exported for child components ──
 export interface LabelData {
@@ -45,6 +46,12 @@ interface LabelAlert {
   id: number;
   orderId: string;
   labelId: string;
+}
+
+interface OrderAlert {
+  id: number;
+  orderNumber: string;
+  itemCount: number;
 }
 
 const initialAlerts: FailureAlert[] = [
@@ -105,6 +112,15 @@ function App() {
   const [failureAlerts, setFailureAlerts] = useState<FailureAlert[]>(initialAlerts);
   const [labels, setLabels] = useState<LabelData[]>(initialLabels);
   const [labelAlerts, setLabelAlerts] = useState<LabelAlert[]>([]);
+  const [orderAlerts, setOrderAlerts] = useState<OrderAlert[]>([]);
+
+  const dismissOrderAlert = (id: number) => {
+    setOrderAlerts(prev => prev.filter(a => a.id !== id));
+  };
+
+  const handleOrderCreated = (orderNumber: string, itemCount: number) => {
+    setOrderAlerts(prev => [...prev, { id: Date.now(), orderNumber, itemCount }]);
+  };
 
   const dismissAlert = (id: number) => {
     setFailureAlerts(prev => prev.filter(a => a.id !== id));
@@ -112,23 +128,6 @@ function App() {
 
   const dismissLabelAlert = (id: number) => {
     setLabelAlerts(prev => prev.filter(a => a.id !== id));
-  };
-
-  const handleNewLabel = (input: NewLabelInput) => {
-    const newLabel: LabelData = {
-      ...input,
-      id: `LBL-${String(Date.now()).slice(-4)}`,
-      status: 'pending',
-      createdAt: new Date().toLocaleString('en-GB', {
-        day: '2-digit', month: 'short', year: 'numeric',
-        hour: '2-digit', minute: '2-digit',
-      }),
-    };
-    setLabels(prev => [newLabel, ...prev]);
-    setLabelAlerts(prev => [
-      ...prev,
-      { id: Date.now(), orderId: input.orderId, labelId: newLabel.id },
-    ]);
   };
 
   const verifyLabel = (id: string) => {
@@ -176,9 +175,49 @@ function App() {
           />
         )}
         {activePage === 'orders' && (
-          <BirleaOrders key="orders" onOrderSubmit={handleNewLabel} />
+          <BirleaOrders key="orders" onOrderCreated={handleOrderCreated} />
         )}
+        {activePage === 'calls' && <OutboundCalls key="calls" />}
       </main>
+
+      {/* ── Order Created Notifications — bottom-right ── */}
+      {orderAlerts.length > 0 && (
+        <div className="fixed bottom-5 right-5 z-[600] flex flex-col gap-2">
+          {orderAlerts.map(alert => (
+            <div
+              key={alert.id}
+              className="glass-card w-80 p-4 flex items-start gap-3 shadow-lg"
+              style={{ borderColor: '#fde68a', animation: 'slideInRight 0.3s ease-out' }}
+            >
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#fffbeb' }}>
+                <AlertTriangle className="w-4 h-4" style={{ color: '#d97706' }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-sora font-semibold text-sm" style={{ color: '#1e293b' }}>
+                  Low Stock Order Pending
+                </p>
+                <p className="font-inter text-xs mt-0.5 leading-relaxed" style={{ color: '#64748b' }}>
+                  Order <span className="font-mono" style={{ color: '#d97706' }}>{alert.orderNumber}</span> created for {alert.itemCount} low-stock item{alert.itemCount !== 1 ? 's' : ''} — awaiting your approval
+                </p>
+                <button
+                  onClick={() => { setActivePage('orders'); dismissOrderAlert(alert.id); }}
+                  className="mt-2 flex items-center gap-1 text-[11px] font-sora font-medium"
+                  style={{ color: '#0ea5e9' }}
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  Review &amp; Approve Order
+                </button>
+              </div>
+              <button
+                onClick={() => dismissOrderAlert(alert.id)}
+                className="text-slate-300 hover:text-slate-500 transition-colors flex-shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ── Label Generated Notifications — bottom-right ── */}
       {labelAlerts.length > 0 && (
@@ -227,7 +266,7 @@ function App() {
         <div
           className="fixed z-[600] flex flex-col gap-2"
           style={{
-            bottom: labelAlerts.length > 0 ? `${5 + labelAlerts.length * 88}px` : '20px',
+            bottom: `${20 + (labelAlerts.length + orderAlerts.length) * 88}px`,
             right: '20px',
             transition: 'bottom 0.3s ease',
           }}
