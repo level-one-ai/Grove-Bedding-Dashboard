@@ -46,7 +46,7 @@ interface ProcessedFile {
   size: number;
   createdAt: string;
   webUrl?: string;
-  rec?: StatusRecord | null;
+  rec: StatusRecord | null;
 }
 
 interface StatusRecord {
@@ -264,7 +264,7 @@ export default function FileManagement() {
     });
 
     const files: ProcessedFile[] = d.files.map((f: ScanFile) => {
-      let rec = byFile[f.name] ?? null;
+      let rec: StatusRecord | null = byFile[f.name] ?? null;
       if (!rec) {
         const base = f.name.replace(/[-_]\d+\.pdf$/i, '').replace(/\.pdf$/i, '').toLowerCase();
         rec = byOriginal[base] ?? null;
