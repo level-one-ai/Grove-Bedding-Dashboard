@@ -1,0 +1,18 @@
+{
+  "name": "grove-label-bridge",
+  "version": "1.0.0",
+  "description": "Grove Bedding — Office Label Bridge Agent",
+  "type": "module",
+  "main": "bridge-agent.js",
+  "scripts": {
+    "start": "node bridge-agent.js",
+    "dev": "node --watch bridge-agent.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "firebase-admin": "^12.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
