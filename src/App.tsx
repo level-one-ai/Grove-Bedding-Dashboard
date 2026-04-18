@@ -13,8 +13,9 @@ import DispatchTracking from './sections/DispatchTracking';
 import LabelManagement from './sections/LabelManagement';
 import BirleaOrders from './sections/BirleaOrders';
 import OutboundCalls from './sections/OutboundCalls';
+import FileManagement from './sections/FileManagement';
 
-export type PageId = 'dashboard' | 'stock' | 'logs' | 'dispatch' | 'labels' | 'orders' | 'calls';
+export type PageId = 'dashboard' | 'stock' | 'logs' | 'dispatch' | 'labels' | 'orders' | 'calls' | 'files';
 
 // ── Shared label types exported for child components ──
 export interface LabelData {
@@ -177,7 +178,8 @@ function App() {
         {activePage === 'orders' && (
           <BirleaOrders key="orders" onOrderCreated={handleOrderCreated} />
         )}
-        {activePage === 'calls' && <OutboundCalls key="calls" />}
+        {activePage === 'calls' && <OutboundCalls key="calls" /> }
+        {activePage === 'files' && <FileManagement key="files" />}
       </main>
 
       {/* ── Order Created Notifications — bottom-right ── */}

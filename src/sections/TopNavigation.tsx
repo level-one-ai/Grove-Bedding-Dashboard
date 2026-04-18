@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
-import { Home, Package, FileText, Truck, Tag, ShoppingBag, PhoneCall } from 'lucide-react';
+import { Home, Package, FileText, Truck, Tag, ShoppingBag, PhoneCall, FolderOpen } from 'lucide-react';
 import type { PageId } from '../App';
 
 interface Props {
@@ -16,6 +16,7 @@ const navItems = [
   { icon: Tag, label: 'Labels', pageId: 'labels' as PageId },
   { icon: ShoppingBag, label: 'Orders', pageId: 'orders' as PageId },
   { icon: PhoneCall, label: 'Calls', pageId: 'calls' as PageId },
+  { icon: FolderOpen, label: 'Files', pageId: 'files' as PageId },
 ];
 
 export default function TopNavigation({ activePage, setActivePage }: Props) {
