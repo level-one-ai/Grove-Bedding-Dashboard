@@ -187,7 +187,7 @@ function AutomationVisualiser({ steps, isRunning, fileName }: {
       </div>
 
       {/* Circles row */}
-      <div className="flex items-start w-full overflow-x-auto pb-3">
+      <div className="flex items-start justify-center w-full overflow-x-auto pb-3">
         {steps.map((step, idx) => {
           const c = {
             idle:    { border: '#e2e8f0', bg: '#f8fafc', textCol: '#94a3b8', dotCol: '#cbd5e1',   shadow: 'none' },
@@ -590,6 +590,7 @@ export default function FileManagement() {
     loadStatusCache().then(cache => loadProcessed(cache));
   }
 
+  const allPipelineDone = pipelineSteps.every(s => s.status === 'done');
 
   return (
     <div className="w-full min-h-screen overflow-y-auto" style={{ background: '#f8fafc', paddingBottom: '48px' }}>
@@ -697,33 +698,6 @@ export default function FileManagement() {
             </div>
           </div>
         )}
-
-        {/* ── Automation Visualiser (full width) ── */}
-        <div className="glass-card p-6 mb-5">
-          <AutomationVisualiser steps={pipelineSteps} isRunning={isRunning} fileName={activeFileName} />
-
-          {/* Result */}
-          {runResult && !isRunning && (
-            <div className="mt-5 p-4 rounded-xl bg-emerald-50 border border-emerald-200">
-              <div className="flex items-center gap-2 mb-3"><CheckCheck className="w-4 h-4 text-emerald-500" /><span className="font-sora font-semibold text-sm text-emerald-700">Processing Complete</span></div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {runResult.customerName && <div><p className="font-mono text-[9px] text-slate-400 uppercase">Customer</p><p className="font-sora text-xs font-medium text-slate-700">{runResult.customerName}</p></div>}
-                {runResult.ref && <div><p className="font-mono text-[9px] text-slate-400 uppercase">Reference</p><p className="font-sora text-xs font-medium text-slate-700">{runResult.ref}</p></div>}
-                {runResult.totalPages && <div><p className="font-mono text-[9px] text-slate-400 uppercase">Pages</p><p className="font-sora text-xs font-medium text-slate-700">{runResult.totalPages}</p></div>}
-                {runResult.googleDriveFolderUrl && <div><p className="font-mono text-[9px] text-slate-400 uppercase">Google Drive</p><a href={runResult.googleDriveFolderUrl} target="_blank" rel="noopener noreferrer" className="font-sora text-xs text-sky-500 hover:underline flex items-center gap-1">Open <ExternalLink className="w-2.5 h-2.5" /></a></div>}
-              </div>
-            </div>
-          )}
-
-          {/* Error */}
-          {runError && !isRunning && (
-            <div className="mt-5 p-4 rounded-xl bg-red-50 border border-red-200">
-              <div className="flex items-center gap-2 mb-1"><AlertCircle className="w-4 h-4 text-red-500" /><span className="font-sora font-semibold text-sm text-red-700">Processing Failed</span></div>
-              <p className="font-mono text-xs text-red-600">{runError}</p>
-              {selectedFile && <button onClick={startRun} className="mt-2 font-sora text-xs text-sky-500 hover:underline">↺ Try Again</button>}
-            </div>
-          )}
-        </div>
 
         {/* ── Three columns ── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -882,6 +856,34 @@ export default function FileManagement() {
             )}
           </div>
         </div>
+
+        {/* ── Automation Visualiser (full width) ── */}
+        <div className="glass-card p-6 mt-5">
+          <AutomationVisualiser steps={pipelineSteps} isRunning={isRunning} fileName={activeFileName} />
+
+          {/* Result */}
+          {runResult && !isRunning && (
+            <div className="mt-5 p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+              <div className="flex items-center gap-2 mb-3"><CheckCheck className="w-4 h-4 text-emerald-500" /><span className="font-sora font-semibold text-sm text-emerald-700">Processing Complete</span></div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {runResult.customerName && <div><p className="font-mono text-[9px] text-slate-400 uppercase">Customer</p><p className="font-sora text-xs font-medium text-slate-700">{runResult.customerName}</p></div>}
+                {runResult.ref && <div><p className="font-mono text-[9px] text-slate-400 uppercase">Reference</p><p className="font-sora text-xs font-medium text-slate-700">{runResult.ref}</p></div>}
+                {runResult.totalPages && <div><p className="font-mono text-[9px] text-slate-400 uppercase">Pages</p><p className="font-sora text-xs font-medium text-slate-700">{runResult.totalPages}</p></div>}
+                {runResult.googleDriveFolderUrl && <div><p className="font-mono text-[9px] text-slate-400 uppercase">Google Drive</p><a href={runResult.googleDriveFolderUrl} target="_blank" rel="noopener noreferrer" className="font-sora text-xs text-sky-500 hover:underline flex items-center gap-1">Open <ExternalLink className="w-2.5 h-2.5" /></a></div>}
+              </div>
+            </div>
+          )}
+
+          {/* Error */}
+          {runError && !isRunning && (
+            <div className="mt-5 p-4 rounded-xl bg-red-50 border border-red-200">
+              <div className="flex items-center gap-2 mb-1"><AlertCircle className="w-4 h-4 text-red-500" /><span className="font-sora font-semibold text-sm text-red-700">Processing Failed</span></div>
+              <p className="font-mono text-xs text-red-600">{runError}</p>
+              {selectedFile && <button onClick={startRun} className="mt-2 font-sora text-xs text-sky-500 hover:underline">↺ Try Again</button>}
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );
