@@ -20,9 +20,9 @@ import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import {
   ClipboardList, Calendar, RefreshCw, AlertCircle,
-  CheckCircle2, Clock, Package, Printer,
+  CheckCircle2, Package, Printer,
   Truck, ChevronDown, ChevronUp, X, Search,
-  Tag, ExternalLink, Info,
+  Tag, Info,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
