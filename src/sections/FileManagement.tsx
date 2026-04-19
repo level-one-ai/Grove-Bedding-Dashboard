@@ -51,6 +51,7 @@ interface StatusRecord {
 
 interface WaitingFile {
   fileId: string;
+  fileName: string;
   totalPages?: number;
 }
 
@@ -83,6 +84,7 @@ interface AutoStep {
 
 interface HistoryRun {
   id: string;
+  fileName: string;
   date: string;
   time: string;
   status: 'success' | 'failed' | 'running';
@@ -138,6 +140,7 @@ async function api(url: string, opts?: RequestInit) {
 function AutomationVisualiser({ steps, isRunning }: {
   steps: AutoStep[];
   isRunning: boolean;
+  fileName: string;
 }) {
   const allDone   = steps.every(s => s.status === 'done');
   const hasError  = steps.some(s => s.status === 'error');
@@ -301,7 +304,6 @@ export default function FileManagement() {
   const [runResult, setRunResult]         = useState<RunResult | null>(null);
   const [runError, setRunError]           = useState<string | null>(null);
   const [pipelineSteps, setPipelineSteps] = useState<AutoStep[]>(buildIdleSteps());
-  const [activeFileName, setActiveFileName] = useState('');
   const [history, setHistory]             = useState<HistoryRun[]>([]);
   const [diagOpen, setDiagOpen]           = useState(false);
   const [logsOpen, setLogsOpen]           = useState(false);
@@ -493,7 +495,6 @@ export default function FileManagement() {
     if (autoProcessing.current) return;
     autoProcessing.current = true;
     setSelectedFile(f);
-    setActiveFileName(f.name);
     setIsRunning(true);
     setPipelineSteps(buildIdleSteps());
     setRunResult(null);
@@ -505,7 +506,6 @@ export default function FileManagement() {
   async function startRun() {
     if (!selectedFile || isRunning) return;
     setIsRunning(true);
-    setActiveFileName(selectedFile.name);
     setPipelineSteps(buildIdleSteps());
     setRunResult(null);
     setRunError(null);
