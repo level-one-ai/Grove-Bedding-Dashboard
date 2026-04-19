@@ -5,7 +5,7 @@ import './App.css';
 
 // Import sections
 import Header from './sections/Header';
-import TopNavigation from './sections/TopNavigation';
+import SideNavigation from './sections/TopNavigation';
 import DashboardHero from './sections/DashboardHero';
 import StockManagement from './sections/StockManagement';
 import AutomationStream from './sections/AutomationStream';
@@ -110,6 +110,7 @@ const initialLabels: LabelData[] = [
 
 function App() {
   const [activePage, setActivePage] = useState<PageId>('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [failureAlerts, setFailureAlerts] = useState<FailureAlert[]>(initialAlerts);
   const [labels, setLabels] = useState<LabelData[]>(initialLabels);
   const [labelAlerts, setLabelAlerts] = useState<LabelAlert[]>([]);
@@ -155,13 +156,13 @@ function App() {
       <div className="noise-overlay" />
 
       {/* Header */}
-      <Header />
+      <Header onMenuToggle={() => setSidebarOpen(o => !o)} />
 
-      {/* Top Navigation */}
-      <TopNavigation activePage={activePage} setActivePage={setActivePage} />
+      {/* Sidebar Navigation */}
+      <SideNavigation activePage={activePage} setActivePage={setActivePage} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      {/* Main Content — pt-32 clears the fixed header (64px) + fixed nav (~64px) */}
-      <main className="relative pt-32 h-full">
+      {/* Main Content — pt-16 clears the fixed header (64px) */}
+      <main className="relative pt-16 h-full">
         {activePage === 'dashboard' && <DashboardHero key="dashboard" />}
         {activePage === 'stock' && <StockManagement key="stock" setActivePage={setActivePage} />}
         {activePage === 'logs' && <AutomationStream key="logs" />}
@@ -178,7 +179,7 @@ function App() {
         {activePage === 'orders' && (
           <BirleaOrders key="orders" onOrderCreated={handleOrderCreated} />
         )}
-        {activePage === 'calls' && <OutboundCalls key="calls" /> }
+        {activePage === 'calls' && <OutboundCalls key="calls" />}
         {activePage === 'files' && <FileManagement key="files" />}
       </main>
 

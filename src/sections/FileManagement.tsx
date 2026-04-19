@@ -199,14 +199,14 @@ function AutomationVisualiser({ steps, isRunning, fileName }: {
           return (
             <div key={step.id} className="flex items-center flex-shrink-0">
               {/* Circle + labels */}
-              <div className="flex flex-col items-center" style={{ width: '90px' }}>
+              <div className="flex flex-col items-center" style={{ width: '76px' }}>
                 {/* Circle */}
                 <div
-                  className="w-16 h-16 rounded-full flex items-center justify-center transition-all duration-500 relative"
+                  className="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-500 relative"
                   style={{ border: `2.5px solid ${c.border}`, background: c.bg, boxShadow: c.shadow }}
                 >
                   <span
-                    className="text-2xl select-none transition-all duration-500"
+                    className="text-lg select-none transition-all duration-500"
                     style={{ filter: step.status === 'idle' ? 'grayscale(1) opacity(0.35)' : 'none' }}
                   >
                     {step.icon}
@@ -221,7 +221,7 @@ function AutomationVisualiser({ steps, isRunning, fileName }: {
                 </div>
 
                 {/* Step name */}
-                <p className="font-sora font-semibold text-[11px] mt-2 text-center transition-colors duration-500"
+                <p className="font-sora font-semibold text-[10px] mt-1.5 text-center transition-colors duration-500"
                   style={{ color: c.textCol }}>
                   {step.label}
                 </p>
@@ -250,7 +250,7 @@ function AutomationVisualiser({ steps, isRunning, fileName }: {
 
               {/* Arrow */}
               {idx < steps.length - 1 && (
-                <div className="flex items-center flex-shrink-0 mb-8" style={{ width: '28px', paddingTop: '2px' }}>
+                <div className="flex items-center flex-shrink-0 mb-8" style={{ width: '20px', paddingTop: '2px' }}>
                   <div className="h-px flex-1 transition-all duration-500"
                     style={{ background: steps[idx + 1].status !== 'idle' ? '#10b981' : '#e2e8f0' }} />
                   <div className="transition-all duration-500" style={{
@@ -590,6 +590,7 @@ export default function FileManagement() {
     loadStatusCache().then(cache => loadProcessed(cache));
   }
 
+  const allPipelineDone = pipelineSteps.every(s => s.status === 'done');
 
   return (
     <div className="w-full min-h-screen overflow-y-auto" style={{ background: '#f8fafc', paddingBottom: '48px' }}>
@@ -702,7 +703,7 @@ export default function FileManagement() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
           {/* Scans */}
-          <div className="glass-card flex flex-col" style={{ minHeight: '520px' }}>
+          <div className="glass-card flex flex-col" style={{ minHeight: '320px', maxHeight: '380px' }}>
             <div className="p-4 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
               <div>
                 <div className="flex items-center gap-2">
@@ -772,7 +773,7 @@ export default function FileManagement() {
           </div>
 
           {/* Processed */}
-          <div className="glass-card flex flex-col" style={{ minHeight: '520px' }}>
+          <div className="glass-card flex flex-col" style={{ minHeight: '320px', maxHeight: '380px' }}>
             <div className="p-4 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
               <div>
                 <div className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /><span className="font-sora font-semibold text-sm text-slate-700">Processed</span></div>
@@ -820,7 +821,7 @@ export default function FileManagement() {
           </div>
 
           {/* History */}
-          <div className="glass-card flex flex-col" style={{ minHeight: '520px' }}>
+          <div className="glass-card flex flex-col" style={{ minHeight: '320px', maxHeight: '380px' }}>
             <div className="p-4 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
               <div>
                 <div className="flex items-center gap-2"><Clock className="w-4 h-4 text-slate-400" /><span className="font-sora font-semibold text-sm text-slate-700">Run History</span></div>
@@ -857,7 +858,7 @@ export default function FileManagement() {
         </div>
 
         {/* ── Automation Visualiser (full width) ── */}
-        <div className="glass-card p-6 mt-5">
+        <div className="glass-card p-4 mt-4">
           <AutomationVisualiser steps={pipelineSteps} isRunning={isRunning} fileName={activeFileName} />
 
           {/* Result */}
