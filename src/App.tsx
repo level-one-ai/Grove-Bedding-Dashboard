@@ -14,8 +14,9 @@ import LabelManagement from './sections/LabelManagement';
 import BirleaOrders from './sections/BirleaOrders';
 import OutboundCalls from './sections/OutboundCalls';
 import FileManagement from './sections/FileManagement';
+import SalesOrders from './sections/SalesOrders';
 
-export type PageId = 'dashboard' | 'stock' | 'logs' | 'dispatch' | 'labels' | 'orders' | 'calls' | 'files';
+export type PageId = 'dashboard' | 'stock' | 'logs' | 'dispatch' | 'labels' | 'orders' | 'calls' | 'files' | 'salesorders';
 
 // ── Shared label types exported for child components ──
 export interface LabelData {
@@ -181,6 +182,7 @@ function App() {
         )}
         {activePage === 'calls' && <OutboundCalls key="calls" />}
         {activePage === 'files' && <FileManagement key="files" />}
+        {activePage === 'salesorders' && <SalesOrders key="salesorders" />}
       </main>
 
       {/* ── Order Created Notifications — bottom-right ── */}
