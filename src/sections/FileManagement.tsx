@@ -51,7 +51,6 @@ interface StatusRecord {
 
 interface WaitingFile {
   fileId: string;
-  fileName: string;
   totalPages?: number;
 }
 
@@ -84,7 +83,6 @@ interface AutoStep {
 
 interface HistoryRun {
   id: string;
-  fileName: string;
   date: string;
   time: string;
   status: 'success' | 'failed' | 'running';
@@ -137,10 +135,9 @@ async function api(url: string, opts?: RequestInit) {
 
 // ─── Automation Visualiser ────────────────────────────────────────────────────
 
-function AutomationVisualiser({ steps, isRunning, fileName }: {
+function AutomationVisualiser({ steps, isRunning }: {
   steps: AutoStep[];
   isRunning: boolean;
-  fileName: string;
 }) {
   const allDone   = steps.every(s => s.status === 'done');
   const hasError  = steps.some(s => s.status === 'error');
@@ -580,7 +577,6 @@ export default function FileManagement() {
     loadStatusCache().then(cache => loadProcessed(cache));
   }
 
-  const allPipelineDone = pipelineSteps.every(s => s.status === 'done');
 
   return (
     <div className="w-full min-h-screen overflow-y-auto" style={{ background: '#f8fafc', paddingBottom: '48px' }}>
