@@ -845,7 +845,7 @@ export default function FileManagement() {
 
         {/* ── Automation Visualiser (full width) ── */}
         <div className="mt-4 mx-auto" style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", padding: "12px 16px", width: "fit-content", maxWidth: "100%" }}>
-          <AutomationVisualiser steps={pipelineSteps} isRunning={isRunning} fileName={activeFileName} />
+          <AutomationVisualiser steps={pipelineSteps} isRunning={isRunning} />
 
           {/* Result */}
           {runResult && !isRunning && (
