@@ -50,8 +50,8 @@ interface StatusRecord {
 }
 
 interface WaitingFile {
-  fileName: string;
   fileId: string;
+  fileName: string;
   totalPages?: number;
 }
 
@@ -83,8 +83,8 @@ interface AutoStep {
 }
 
 interface HistoryRun {
-  fileName: string;
   id: string;
+  fileName: string;
   date: string;
   time: string;
   status: 'success' | 'failed' | 'running';
@@ -140,6 +140,7 @@ async function api(url: string, opts?: RequestInit) {
 function AutomationVisualiser({ steps, isRunning }: {
   steps: AutoStep[];
   isRunning: boolean;
+  fileName: string;
 }) {
   const allDone   = steps.every(s => s.status === 'done');
   const hasError  = steps.some(s => s.status === 'error');
@@ -632,11 +633,11 @@ export default function FileManagement() {
 
 
   return (
-    <div className="w-full" style={{ background: '#f8fafc', paddingBottom: '48px' }}>
-      <div className="max-w-[1400px] mx-auto px-6 py-8">
+    <div className="h-full overflow-hidden flex flex-col" style={{ background: '#f8fafc' }}>
+      <div className="flex-1 flex flex-col min-h-0 max-w-[1400px] w-full mx-auto px-6 py-4">
 
         {/* ── Header ── */}
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex-shrink-0 mb-3 flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="font-sora font-bold text-2xl text-slate-800">File Management</h1>
             <p className="font-inter text-sm text-slate-400 mt-0.5">Grove PDF Router · OneDrive · Google Drive · Make.com</p>
@@ -739,10 +740,10 @@ export default function FileManagement() {
         )}
 
         {/* ── Three columns ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 gap-4 overflow-hidden">
 
           {/* Scans */}
-          <div className="glass-card flex flex-col" style={{ minHeight: '360px', maxHeight: '440px' }}>
+          <div className="glass-card flex flex-col min-h-0 overflow-hidden">
             <div className="p-4 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
               <div>
                 <div className="flex items-center gap-2">
@@ -812,7 +813,7 @@ export default function FileManagement() {
           </div>
 
           {/* Processed */}
-          <div className="glass-card flex flex-col" style={{ minHeight: '360px', maxHeight: '440px' }}>
+          <div className="glass-card flex flex-col min-h-0 overflow-hidden">
             <div className="p-4 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
               <div>
                 <div className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /><span className="font-sora font-semibold text-sm text-slate-700">Processed</span></div>
@@ -860,7 +861,7 @@ export default function FileManagement() {
           </div>
 
           {/* History */}
-          <div className="glass-card flex flex-col" style={{ minHeight: '360px', maxHeight: '440px' }}>
+          <div className="glass-card flex flex-col min-h-0 overflow-hidden">
             <div className="p-4 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
               <div>
                 <div className="flex items-center gap-2"><Clock className="w-4 h-4 text-slate-400" /><span className="font-sora font-semibold text-sm text-slate-700">Run History</span></div>

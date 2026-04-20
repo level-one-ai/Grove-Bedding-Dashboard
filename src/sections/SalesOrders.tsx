@@ -20,9 +20,9 @@ import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import {
   ClipboardList, Calendar, RefreshCw, AlertCircle,
-  CheckCircle2, Package, Printer,
+  CheckCircle2, Clock, Package, Printer,
   Truck, ChevronDown, ChevronUp, X, Search,
-  Tag, Info,
+  Tag, ExternalLink, Info,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -503,13 +503,13 @@ export default function SalesOrders() {
   return (
     <div
       ref={sectionRef}
-      className="w-full"
-      style={{ background: '#f8fafc', paddingBottom: '48px' }}
+      className="h-full overflow-hidden flex flex-col"
+      style={{ background: '#f8fafc' }}
     >
-      <div className="max-w-[1400px] mx-auto px-6 py-8">
+      <div className="flex-1 flex flex-col min-h-0 max-w-[1400px] w-full mx-auto px-6 py-4">
 
         {/* ── Header ── */}
-        <div className="so-header mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div className="so-header flex-shrink-0 mb-4 flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="font-sora font-bold text-2xl" style={{ color: '#1e293b' }}>Sales Orders</h1>
             <p className="font-inter text-sm mt-0.5" style={{ color: '#94a3b8' }}>
@@ -530,12 +530,12 @@ export default function SalesOrders() {
         </div>
 
         {/* ── Three column layout ── */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+        <div className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-3 gap-4 overflow-hidden">
 
           {/* ── Panel 1: Missing ETD Orders ── */}
-          <div className="so-panel xl:col-span-2 flex flex-col" style={{ minHeight: '500px' }}>
+          <div className="so-panel xl:col-span-2 flex flex-col min-h-0">
             <div
-              className="rounded-2xl border flex flex-col h-full"
+              className="rounded-2xl border flex flex-col min-h-0 h-full"
               style={{ background: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
             >
               {/* Panel header */}
@@ -661,7 +661,7 @@ export default function SalesOrders() {
           </div>
 
           {/* ── Right column: Label History + Dispatch ── */}
-          <div className="so-panel flex flex-col gap-5">
+          <div className="so-panel flex flex-col gap-4 min-h-0 overflow-y-auto">
 
             {/* Label History Panel */}
             <div
