@@ -50,8 +50,8 @@ interface StatusRecord {
 }
 
 interface WaitingFile {
-  fileName: string;
   fileId: string;
+  fileName: string;
   totalPages?: number;
 }
 
@@ -83,8 +83,8 @@ interface AutoStep {
 }
 
 interface HistoryRun {
-  fileName: string;
   id: string;
+  fileName: string;
   date: string;
   time: string;
   status: 'success' | 'failed' | 'running';
@@ -140,6 +140,7 @@ async function api(url: string, opts?: RequestInit) {
 function AutomationVisualiser({ steps, isRunning }: {
   steps: AutoStep[];
   isRunning: boolean;
+  fileName: string;
 }) {
   const allDone   = steps.every(s => s.status === 'done');
   const hasError  = steps.some(s => s.status === 'error');
@@ -355,24 +356,78 @@ export default function FileManagement() {
 
   async function loadProcessed(cache?: StatusRecord[]) {
     const c = cache ?? statusCache;
-    const d = await api('/api/scan-files?folder=Processed');
-    if (!d?.success || !d.files) return;
-    const byFile: Record<string, StatusRecord> = {};
-    const byOriginal: Record<string, StatusRecord> = {};
+
+    // Build processed file list from Firestore records (renamedFiles) first.
+    // This shows the actual renamed output files rather than the original scan names.
+    const fromRecords: ProcessedFile[] = [];
+    const seen = new Set<string>();
     c.forEach(r => {
-      (r.renamedFiles ?? []).forEach(f => { byFile[f] = r; });
-      if (r.originalFileName) byOriginal[r.originalFileName.toLowerCase()] = r;
-    });
-    const files: ProcessedFile[] = d.files.map((f: ScanFile) => {
-      let rec: StatusRecord | null = byFile[f.name] ?? null;
-      if (!rec) {
-        const base = f.name.replace(/[-_]\d+\.pdf$/i, '').replace(/\.pdf$/i, '').toLowerCase();
-        rec = byOriginal[base] ?? null;
+      if (r.status === 'completed' && r.renamedFiles?.length) {
+        r.renamedFiles.forEach(name => {
+          if (!seen.has(name)) {
+            seen.add(name);
+            fromRecords.push({
+              name,
+              size: 0,
+              createdAt: '',
+              webUrl: r.googleDriveFolderUrl ? undefined : undefined,
+              rec: r,
+            });
+          }
+        });
       }
-      if (!rec) rec = c.find(r => r.customerName && f.name.toLowerCase().includes(r.customerName.toLowerCase())) ?? null;
-      return { ...f, rec: rec ?? null };
     });
-    setProcFiles(files);
+
+    // Also fetch the OneDrive Processed folder to get file sizes, dates, and webUrls
+    // and merge them into the records-based list
+    const d = await api('/api/scan-files?folder=Processed');
+    if (d?.success && d.files) {
+      const byName: Record<string, ScanFile> = {};
+      (d.files as ScanFile[]).forEach(f => { byName[f.name] = f; });
+
+      // Update records with OneDrive metadata where available
+      fromRecords.forEach(pf => {
+        const od = byName[pf.name];
+        if (od) {
+          pf.size = od.size;
+          pf.createdAt = od.createdAt;
+          pf.webUrl = od.webUrl;
+          delete byName[pf.name]; // mark as handled
+        }
+      });
+
+      // Add any files in OneDrive Processed that are not already in records
+      // (e.g. older files before Firestore tracking)
+      const byFile: Record<string, StatusRecord> = {};
+      const byOriginal: Record<string, StatusRecord> = {};
+      c.forEach(r => {
+        (r.renamedFiles ?? []).forEach(f => { byFile[f] = r; });
+        if (r.originalFileName) byOriginal[r.originalFileName.toLowerCase()] = r;
+      });
+
+      Object.values(byName).forEach((f: ScanFile) => {
+        let rec: StatusRecord | null = byFile[f.name] ?? null;
+        if (!rec) {
+          const base = f.name.replace(/[-_]\d+\.pdf$/i, '').replace(/\.pdf$/i, '').toLowerCase();
+          rec = byOriginal[base] ?? null;
+        }
+        if (!rec) rec = c.find(r => r.customerName && f.name.toLowerCase().includes(r.customerName.toLowerCase())) ?? null;
+        if (!seen.has(f.name)) {
+          fromRecords.push({ ...f, rec: rec ?? null });
+          seen.add(f.name);
+        }
+      });
+    }
+
+    // Sort: most recently processed first (records first, then by createdAt)
+    fromRecords.sort((a, b) => {
+      if (a.createdAt && b.createdAt) return b.createdAt.localeCompare(a.createdAt);
+      if (a.createdAt) return -1;
+      if (b.createdAt) return 1;
+      return 0;
+    });
+
+    setProcFiles(fromRecords);
   }
 
   async function loadWaiting() {
@@ -578,7 +633,7 @@ export default function FileManagement() {
 
 
   return (
-    <div className="w-full min-h-screen overflow-y-auto" style={{ background: '#f8fafc', paddingBottom: '48px' }}>
+    <div className="w-full" style={{ background: '#f8fafc', paddingBottom: '48px' }}>
       <div className="max-w-[1400px] mx-auto px-6 py-8">
 
         {/* ── Header ── */}

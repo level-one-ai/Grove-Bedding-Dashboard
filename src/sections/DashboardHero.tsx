@@ -3,7 +3,7 @@ import { gsap } from 'gsap';
 import {
   FileText, Printer, Truck, PhoneCall,
   CheckCircle2, AlertCircle, Clock,
-  TrendingUp, MapPin,
+  TrendingUp, Package, MapPin,
 } from 'lucide-react';
 
 // ── Mock activity data — will be replaced with real API calls ──────────────────
@@ -53,7 +53,7 @@ export default function DashboardHero() {
   return (
     <div
       ref={sectionRef}
-      className="w-full min-h-screen overflow-y-auto"
+      className="w-full"
       style={{ background: '#f8fafc', paddingBottom: '48px' }}
     >
       <div className="max-w-[1400px] mx-auto px-6 py-6">

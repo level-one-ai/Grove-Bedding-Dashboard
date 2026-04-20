@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import {
   PhoneCall, PhoneOff, PhoneMissed,
-  User, Hash, Calendar,
+  Clock, User, Hash, Calendar,
   Timer, ShoppingBag, MessageSquare,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -203,8 +203,8 @@ export default function OutboundCalls() {
   return (
     <div
       ref={sectionRef}
-      className="w-full min-h-screen overflow-y-auto"
-      style={{ background: '#f8fafc', paddingBottom: '48px' }}
+      className="w-full"
+      style={{ background: '#f8fafc', paddingBottom: '32px' }}
     >
       <div className="max-w-[700px] mx-auto px-6 py-6">
 
@@ -235,24 +235,24 @@ export default function OutboundCalls() {
         </div>
 
         {/* Call cards — single vertical column */}
-        <div className="space-y-3">
+        <div className="space-y-2">
           {callLogs.map(call => {
             const cfg = statusConfig[call.status];
             const StatusIcon = cfg.icon;
             return (
               <div
                 key={call.id}
-                className="call-card rounded-2xl cursor-pointer hover:shadow-md transition-all duration-200 group"
+                className="call-card rounded-xl cursor-pointer hover:shadow-md transition-all duration-200 group"
                 style={{ background: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
                 onClick={() => { setSelectedCall(call); setDialogOpen(true); }}
               >
                 {/* Top row — date/time + status badge */}
-                <div className="px-5 pt-4 pb-3 flex items-center justify-between" style={{ borderBottom: '1px solid #f8fafc' }}>
+                <div className="px-4 pt-3 pb-2 flex items-center justify-between" style={{ borderBottom: '1px solid #f8fafc' }}>
                   <div className="flex items-center gap-3">
                     {/* Status icon circle */}
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
                       style={{ background: cfg.bg, border: `1px solid ${cfg.bo}` }}>
-                      <StatusIcon className="w-5 h-5" style={{ color: cfg.color }} />
+                      <StatusIcon className="w-4 h-4" style={{ color: cfg.color }} />
                     </div>
                     {/* Date + time */}
                     <div>
@@ -269,10 +269,10 @@ export default function OutboundCalls() {
                 </div>
 
                 {/* Main info */}
-                <div className="px-5 py-3">
+                <div className="px-4 py-2">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      <p className="font-sora font-bold text-base group-hover:text-sky-600 transition-colors" style={{ color: '#1e293b' }}>
+                      <p className="font-sora font-semibold text-sm group-hover:text-sky-600 transition-colors" style={{ color: '#1e293b' }}>
                         {call.contactName}
                       </p>
                       {call.contactPerson !== 'N/A' && (
@@ -293,7 +293,7 @@ export default function OutboundCalls() {
                   </div>
 
                   {/* Outcome */}
-                  <div className="mt-3 px-3 py-2 rounded-xl" style={{ background: '#f8fafc', border: '1px solid #f1f5f9' }}>
+                  <div className="mt-2 px-3 py-1.5 rounded-lg" style={{ background: '#f8fafc', border: '1px solid #f1f5f9' }}>
                     <p className="font-inter text-xs" style={{ color: '#334155' }}>
                       <span className="font-semibold" style={{ color: '#94a3b8' }}>Outcome: </span>
                       {call.outcome}
@@ -302,7 +302,7 @@ export default function OutboundCalls() {
                 </div>
 
                 {/* Footer hint */}
-                <div className="px-5 py-2.5 flex items-center gap-2" style={{ borderTop: '1px solid #f8fafc' }}>
+                <div className="px-4 py-2 flex items-center gap-2" style={{ borderTop: '1px solid #f8fafc' }}>
                   <MessageSquare className="w-3.5 h-3.5" style={{ color: '#cbd5e1' }} />
                   <span className="font-inter text-xs" style={{ color: '#94a3b8' }}>
                     {call.transcript.length} transcript line{call.transcript.length !== 1 ? 's' : ''} · Click to view

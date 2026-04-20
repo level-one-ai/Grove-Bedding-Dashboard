@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import {
-
-  ChevronRight, Clock,
+  Zap, CheckCircle2, XCircle, RefreshCw,
+  ChevronRight, AlertTriangle, Clock,
   Webhook, Brain, Printer, Truck, FileText, Tag,
   PhoneCall, type LucideIcon,
 } from 'lucide-react';
@@ -237,7 +237,7 @@ export default function AutomationStream() {
   return (
     <div
       ref={sectionRef}
-      className="w-full min-h-screen overflow-y-auto"
+      className="w-full"
       style={{ background: '#f8fafc', paddingBottom: '48px' }}
     >
       <div className="max-w-[1000px] mx-auto px-6 py-6">

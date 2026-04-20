@@ -20,9 +20,9 @@ import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import {
   ClipboardList, Calendar, RefreshCw, AlertCircle,
-  CheckCircle2, Package, Printer,
+  CheckCircle2, Clock, Package, Printer,
   Truck, ChevronDown, ChevronUp, X, Search,
-  Tag, Info,
+  Tag, ExternalLink, Info,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -503,7 +503,7 @@ export default function SalesOrders() {
   return (
     <div
       ref={sectionRef}
-      className="w-full min-h-screen overflow-y-auto"
+      className="w-full"
       style={{ background: '#f8fafc', paddingBottom: '48px' }}
     >
       <div className="max-w-[1400px] mx-auto px-6 py-8">

@@ -152,7 +152,7 @@ function App() {
   }, []);
 
   return (
-    <div className="relative overflow-hidden" style={{ height: '100vh', background: '#ffffff' }}>
+    <div className="relative" style={{ minHeight: '100vh', background: '#ffffff' }}>
       {/* Noise Overlay */}
       <div className="noise-overlay" />
 
@@ -163,7 +163,7 @@ function App() {
       <SideNavigation activePage={activePage} setActivePage={setActivePage} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Main Content — pt-16 clears the fixed header (64px) */}
-      <main className="relative pt-16 h-full">
+      <main className="relative pt-16" style={{ minHeight: 'calc(100vh - 64px)' }}>
         {activePage === 'dashboard' && <DashboardHero key="dashboard" />}
         {activePage === 'stock' && <StockManagement key="stock" setActivePage={setActivePage} />}
         {activePage === 'logs' && <AutomationStream key="logs" />}
