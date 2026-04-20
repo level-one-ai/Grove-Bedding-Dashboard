@@ -50,6 +50,7 @@ interface StatusRecord {
 }
 
 interface WaitingFile {
+  fileName: string;
   fileId: string;
   totalPages?: number;
 }
@@ -82,6 +83,7 @@ interface AutoStep {
 }
 
 interface HistoryRun {
+  fileName: string;
   id: string;
   date: string;
   time: string;
