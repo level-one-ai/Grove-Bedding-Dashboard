@@ -1,17 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import {
-  PhoneCall,
-  PhoneOff,
-  PhoneMissed,
-  ExternalLink,
-  Clock,
-  User,
-  Hash,
-  Calendar,
-  Timer,
-  ShoppingBag,
-  MessageSquare,
+  PhoneCall, PhoneOff, PhoneMissed,
+  Clock, User, Hash, Calendar,
+  Timer, ShoppingBag, MessageSquare,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -87,7 +79,7 @@ const callLogs: CallLog[] = [
     contactName: 'Comfort Home Store',
     contactPerson: 'N/A',
     phone: '+44 113 555 0300',
-    duration: '0m 0s',
+    duration: '0m 45s',
     orderId: 'SO-1019',
     status: 'no-answer',
     outcome: 'No answer — voicemail left',
@@ -179,9 +171,9 @@ const callLogs: CallLog[] = [
 ];
 
 const statusConfig = {
-  completed: { label: 'Completed', dot: '#22c55e', color: '#16a34a', icon: PhoneCall },
-  'no-answer': { label: 'No Answer', dot: '#f59e0b', color: '#d97706', icon: PhoneMissed },
-  failed: { label: 'Failed', dot: '#ef4444', color: '#dc2626', icon: PhoneOff },
+  completed:  { label: 'Completed',  dot: '#10b981', color: '#166534', bg: '#f0fdf4', bo: '#bbf7d0', icon: PhoneCall },
+  'no-answer':{ label: 'No Answer',  dot: '#f59e0b', color: '#92400e', bg: '#fffbeb', bo: '#fde68a', icon: PhoneMissed },
+  failed:     { label: 'Failed',     dot: '#ef4444', color: '#991b1b', bg: '#fef2f2', bo: '#fecaca', icon: PhoneOff },
 };
 
 export default function OutboundCalls() {
@@ -191,53 +183,45 @@ export default function OutboundCalls() {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      gsap.fromTo(sectionRef.current, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' });
+      gsap.fromTo('.call-card',
+        { y: 16, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.4, stagger: 0.07, ease: 'power2.out' }
+      );
     }, sectionRef);
     return () => ctx.revert();
   }, []);
 
-  const handleCallClick = (call: CallLog) => {
-    setSelectedCall(call);
-    setDialogOpen(true);
-  };
-
   const completedCount = callLogs.filter(c => c.status === 'completed').length;
-  const failedCount = callLogs.filter(c => c.status !== 'completed').length;
-  const totalDuration = callLogs.reduce((sum, c) => {
-    const [m, s] = c.duration.replace('m', '').replace('s', '').trim().split(' ');
-    return sum + (parseInt(m) * 60) + parseInt(s);
+  const failedCount    = callLogs.filter(c => c.status !== 'completed').length;
+  const totalSecs      = callLogs.reduce((s, c) => {
+    const parts = c.duration.replace('m', '').replace('s', '').trim().split(' ');
+    return s + (parseInt(parts[0] ?? '0') * 60) + parseInt(parts[1] ?? '0');
   }, 0);
-  const avgMins = Math.floor(totalDuration / callLogs.length / 60);
-  const avgSecs = Math.floor((totalDuration / callLogs.length) % 60);
+  const avgMins = Math.floor(totalSecs / callLogs.length / 60);
+  const avgSecs = Math.floor((totalSecs / callLogs.length) % 60);
 
   return (
     <div
-      id="calls"
       ref={sectionRef}
-      className="relative w-full h-full overflow-hidden"
-      style={{ background: '#ffffff' }}
+      className="w-full min-h-screen overflow-y-auto"
+      style={{ background: '#f8fafc', paddingBottom: '48px' }}
     >
-      <div className="absolute inset-0 opacity-[0.5]" style={{ backgroundImage: `radial-gradient(circle, #cbd5e1 1px, transparent 1px)`, backgroundSize: '28px 28px' }} />
-
-      <div className="relative z-10 h-full flex flex-col max-w-5xl mx-auto px-8 py-4">
+      <div className="max-w-[700px] mx-auto px-6 py-6">
 
         {/* Header */}
-        <div className="mb-4 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#f0f9ff', border: '1px solid #bae6fd' }}>
-              <PhoneCall className="w-4 h-4" style={{ color: '#0ea5e9' }} />
-            </div>
-            <div>
-              <h2 className="font-sora font-bold text-xl" style={{ color: '#1e293b' }}>Outbound Call Agent</h2>
-              <p className="font-inter text-xs" style={{ color: '#64748b' }}>Click any call to view transcript and details</p>
-            </div>
+        <div className="mb-5 flex items-start justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="font-sora font-bold text-2xl" style={{ color: '#1e293b' }}>Outbound Calls</h1>
+            <p className="font-inter text-sm mt-0.5" style={{ color: '#94a3b8' }}>
+              Automated call agent · Click any call to view transcript
+            </p>
           </div>
 
-          {/* Stats chips */}
-          <div className="flex items-center gap-2">
+          {/* Stats */}
+          <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
-              <span className="w-2 h-2 rounded-full" style={{ background: '#22c55e' }} />
-              <span className="font-mono text-xs font-medium" style={{ color: '#16a34a' }}>{completedCount} completed</span>
+              <span className="w-2 h-2 rounded-full" style={{ background: '#10b981' }} />
+              <span className="font-mono text-xs font-medium" style={{ color: '#166534' }}>{completedCount} completed</span>
             </div>
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl" style={{ background: '#fef2f2', border: '1px solid #fecaca' }}>
               <span className="w-2 h-2 rounded-full" style={{ background: '#ef4444' }} />
@@ -247,122 +231,140 @@ export default function OutboundCalls() {
               <Timer className="w-3.5 h-3.5" style={{ color: '#64748b' }} />
               <span className="font-mono text-xs" style={{ color: '#64748b' }}>Avg {avgMins}m {avgSecs}s</span>
             </div>
-            <div className="flex items-center gap-2 ml-1">
-              <div className="w-2 h-2 rounded-full" style={{ background: '#22c55e', animation: 'pulse 2s infinite' }} />
-              <span className="font-mono text-[10px]" style={{ color: '#22c55e' }}>Live</span>
-            </div>
           </div>
         </div>
 
-        {/* Call Log — 2-col grid, same pattern as AutomationStream */}
-        <div className="grid grid-cols-2 gap-2 overflow-y-auto content-start flex-1 min-h-0">
-          {callLogs.map((call) => {
+        {/* Call cards — single vertical column */}
+        <div className="space-y-3">
+          {callLogs.map(call => {
             const cfg = statusConfig[call.status];
             const StatusIcon = cfg.icon;
             return (
               <div
                 key={call.id}
-                onClick={() => handleCallClick(call)}
-                className="glass-card p-3 flex items-center gap-3 hover:shadow-md transition-all duration-300 cursor-pointer group h-fit"
+                className="call-card rounded-2xl cursor-pointer hover:shadow-md transition-all duration-200 group"
+                style={{ background: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
+                onClick={() => { setSelectedCall(call); setDialogOpen(true); }}
               >
-                {/* Time badge */}
-                <div className="flex-shrink-0 text-right">
-                  <div className="font-mono text-[10px]" style={{ color: '#94a3b8' }}>{call.time}</div>
-                  <div className="font-mono text-[9px]" style={{ color: '#cbd5e1' }}>{call.date.split(' ').slice(0, 2).join(' ')}</div>
-                </div>
-
-                {/* Status dot */}
-                <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: cfg.dot }} />
-
-                {/* Contact info */}
-                <div className="flex-1 min-w-0">
-                  <span className="font-sora font-medium text-xs block truncate group-hover:text-sky-500 transition-colors" style={{ color: '#334155' }}>
-                    {call.contactName}
-                  </span>
-                  <span className="font-mono text-[10px]" style={{ color: '#94a3b8' }}>{call.phone}</span>
-                </div>
-
-                {/* Duration + order */}
-                <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-                  <div className="flex items-center gap-1">
-                    <StatusIcon className="w-3.5 h-3.5" style={{ color: cfg.color }} />
-                    <span className="font-mono text-[10px]" style={{ color: call.status !== 'completed' ? cfg.color : '#94a3b8' }}>
-                      {call.duration === '0m 0s' ? cfg.label : call.duration}
-                    </span>
+                {/* Top row — date/time + status badge */}
+                <div className="px-5 pt-4 pb-3 flex items-center justify-between" style={{ borderBottom: '1px solid #f8fafc' }}>
+                  <div className="flex items-center gap-3">
+                    {/* Status icon circle */}
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ background: cfg.bg, border: `1px solid ${cfg.bo}` }}>
+                      <StatusIcon className="w-5 h-5" style={{ color: cfg.color }} />
+                    </div>
+                    {/* Date + time */}
+                    <div>
+                      <p className="font-sora font-semibold text-sm" style={{ color: '#1e293b' }}>{call.date}</p>
+                      <p className="font-mono text-xs" style={{ color: '#94a3b8' }}>{call.time}</p>
+                    </div>
                   </div>
-                  <span className="font-mono text-[10px]" style={{ color: '#0ea5e9' }}>{call.orderId}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="px-2.5 py-1 rounded-full" style={{ background: cfg.bg, border: `1px solid ${cfg.bo}` }}>
+                      <span className="font-sora text-xs font-semibold" style={{ color: cfg.color }}>{cfg.label}</span>
+                    </div>
+                    <span className="font-mono text-xs" style={{ color: '#94a3b8' }}>{call.duration === '0m 0s' ? '—' : call.duration}</span>
+                  </div>
                 </div>
 
-                <ExternalLink className="w-3 h-3 flex-shrink-0 text-slate-300 group-hover:text-sky-400 transition-colors" />
+                {/* Main info */}
+                <div className="px-5 py-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-sora font-bold text-base group-hover:text-sky-600 transition-colors" style={{ color: '#1e293b' }}>
+                        {call.contactName}
+                      </p>
+                      {call.contactPerson !== 'N/A' && (
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <User className="w-3 h-3" style={{ color: '#94a3b8' }} />
+                          <p className="font-inter text-sm" style={{ color: '#64748b' }}>{call.contactPerson}</p>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <Hash className="w-3 h-3" style={{ color: '#94a3b8' }} />
+                        <p className="font-mono text-sm" style={{ color: '#64748b' }}>{call.phone}</p>
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="font-mono text-xs font-semibold" style={{ color: '#0ea5e9' }}>{call.orderId}</p>
+                      <p className="font-inter text-xs mt-1" style={{ color: '#94a3b8' }}>Order ref</p>
+                    </div>
+                  </div>
+
+                  {/* Outcome */}
+                  <div className="mt-3 px-3 py-2 rounded-xl" style={{ background: '#f8fafc', border: '1px solid #f1f5f9' }}>
+                    <p className="font-inter text-xs" style={{ color: '#334155' }}>
+                      <span className="font-semibold" style={{ color: '#94a3b8' }}>Outcome: </span>
+                      {call.outcome}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Footer hint */}
+                <div className="px-5 py-2.5 flex items-center gap-2" style={{ borderTop: '1px solid #f8fafc' }}>
+                  <MessageSquare className="w-3.5 h-3.5" style={{ color: '#cbd5e1' }} />
+                  <span className="font-inter text-xs" style={{ color: '#94a3b8' }}>
+                    {call.transcript.length} transcript line{call.transcript.length !== 1 ? 's' : ''} · Click to view
+                  </span>
+                </div>
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* ── Call Detail Dialog ── */}
+      {/* ── Call Detail Dialog — centred, scrollable, no header overlap ── */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl" style={{ background: '#ffffff', border: '1px solid #e2e8f0' }}>
+        <DialogContent
+          className="max-w-2xl"
+          style={{
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            maxHeight: '80vh',
+            display: 'flex',
+            flexDirection: 'column',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+          }}
+        >
           {selectedCall && (() => {
             const cfg = statusConfig[selectedCall.status];
             const StatusIcon = cfg.icon;
             return (
               <>
-                <DialogHeader>
-                  <DialogTitle className="font-sora font-bold text-xl flex items-center gap-3" style={{ color: '#1e293b' }}>
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#f0f9ff', border: '1px solid #bae6fd' }}>
-                      <StatusIcon className="w-4 h-4" style={{ color: cfg.color }} />
+                {/* Fixed header */}
+                <DialogHeader className="flex-shrink-0 pb-4" style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <DialogTitle className="font-sora font-bold text-lg flex items-center gap-3" style={{ color: '#1e293b' }}>
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ background: cfg.bg, border: `1px solid ${cfg.bo}` }}>
+                      <StatusIcon className="w-5 h-5" style={{ color: cfg.color }} />
                     </div>
                     {selectedCall.contactName}
                   </DialogTitle>
                 </DialogHeader>
 
-                <div className="mt-2 space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+                {/* Scrollable body */}
+                <div className="flex-1 overflow-y-auto pt-4 space-y-4">
 
-                  {/* Call metadata grid */}
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="rounded-xl p-3" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <User className="w-3 h-3" style={{ color: '#94a3b8' }} />
-                        <p className="font-mono text-[10px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>Contact</p>
+                  {/* Metadata grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {[
+                      { icon: User,      label: 'Contact',    value: selectedCall.contactPerson !== 'N/A' ? selectedCall.contactPerson : '—' },
+                      { icon: Hash,      label: 'Number',     value: selectedCall.phone },
+                      { icon: ShoppingBag, label: 'Order',   value: selectedCall.orderId },
+                      { icon: Calendar,  label: 'Date',       value: `${selectedCall.date} · ${selectedCall.time}` },
+                      { icon: Timer,     label: 'Duration',   value: selectedCall.duration === '0m 0s' ? 'N/A' : selectedCall.duration },
+                      { icon: StatusIcon,label: 'Outcome',    value: selectedCall.outcome },
+                    ].map(item => (
+                      <div key={item.label} className="p-3 rounded-xl" style={{ background: '#f8fafc', border: '1px solid #f1f5f9' }}>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <item.icon className="w-3 h-3" style={{ color: '#94a3b8' }} />
+                          <p className="font-mono text-[9px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>{item.label}</p>
+                        </div>
+                        <p className="font-inter text-xs font-medium leading-snug" style={{ color: '#1e293b' }}>{item.value}</p>
                       </div>
-                      <p className="font-inter text-sm font-medium" style={{ color: '#1e293b' }}>{selectedCall.contactPerson !== 'N/A' ? selectedCall.contactPerson : '—'}</p>
-                    </div>
-                    <div className="rounded-xl p-3" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Hash className="w-3 h-3" style={{ color: '#94a3b8' }} />
-                        <p className="font-mono text-[10px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>Number</p>
-                      </div>
-                      <p className="font-mono text-sm" style={{ color: '#1e293b' }}>{selectedCall.phone}</p>
-                    </div>
-                    <div className="rounded-xl p-3" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <ShoppingBag className="w-3 h-3" style={{ color: '#94a3b8' }} />
-                        <p className="font-mono text-[10px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>Order</p>
-                      </div>
-                      <p className="font-mono text-sm" style={{ color: '#0ea5e9' }}>{selectedCall.orderId}</p>
-                    </div>
-                    <div className="rounded-xl p-3" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Calendar className="w-3 h-3" style={{ color: '#94a3b8' }} />
-                        <p className="font-mono text-[10px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>Date & Time</p>
-                      </div>
-                      <p className="font-inter text-sm" style={{ color: '#1e293b' }}>{selectedCall.date} · {selectedCall.time}</p>
-                    </div>
-                    <div className="rounded-xl p-3" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Clock className="w-3 h-3" style={{ color: '#94a3b8' }} />
-                        <p className="font-mono text-[10px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>Duration</p>
-                      </div>
-                      <p className="font-mono text-sm" style={{ color: '#1e293b' }}>{selectedCall.duration === '0m 0s' ? 'N/A' : selectedCall.duration}</p>
-                    </div>
-                    <div className="rounded-xl p-3" style={{ background: cfg.dot === '#22c55e' ? '#f0fdf4' : cfg.dot === '#f59e0b' ? '#fffbeb' : '#fef2f2', border: `1px solid ${cfg.dot === '#22c55e' ? '#bbf7d0' : cfg.dot === '#f59e0b' ? '#fde68a' : '#fecaca'}` }}>
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <StatusIcon className="w-3 h-3" style={{ color: cfg.color }} />
-                        <p className="font-mono text-[10px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>Outcome</p>
-                      </div>
-                      <p className="font-inter text-xs font-medium leading-tight" style={{ color: cfg.color }}>{selectedCall.outcome}</p>
-                    </div>
+                    ))}
                   </div>
 
                   {/* Transcript */}
@@ -370,12 +372,9 @@ export default function OutboundCalls() {
                     <div className="flex items-center gap-2 mb-3">
                       <MessageSquare className="w-4 h-4" style={{ color: '#64748b' }} />
                       <h3 className="font-sora font-semibold text-sm" style={{ color: '#1e293b' }}>Call Transcript</h3>
+                      <span className="font-mono text-[10px]" style={{ color: '#94a3b8' }}>{selectedCall.transcript.length} lines</span>
                     </div>
-
-                    <div
-                      className="rounded-xl overflow-hidden flex flex-col gap-0"
-                      style={{ border: '1px solid #e2e8f0' }}
-                    >
+                    <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #e2e8f0' }}>
                       {selectedCall.transcript.map((line, idx) => (
                         <div
                           key={idx}
@@ -385,15 +384,17 @@ export default function OutboundCalls() {
                             borderTop: idx > 0 ? '1px solid #f1f5f9' : 'none',
                           }}
                         >
-                          <div className="flex-shrink-0 flex flex-col items-center gap-1 w-14">
+                          <div className="flex-shrink-0 w-14">
                             <span
-                              className="font-mono text-[9px] uppercase tracking-wide font-bold"
+                              className="font-mono text-[9px] uppercase tracking-wide font-bold block"
                               style={{ color: line.speaker === 'Agent' ? '#0ea5e9' : '#64748b' }}
                             >
                               {line.speaker}
                             </span>
                             {line.time && (
-                              <span className="font-mono text-[9px]" style={{ color: '#cbd5e1' }}>{line.time.slice(6)}</span>
+                              <span className="font-mono text-[9px] block mt-0.5" style={{ color: '#cbd5e1' }}>
+                                {line.time.slice(6)}
+                              </span>
                             )}
                           </div>
                           <p className="font-inter text-xs leading-relaxed flex-1" style={{ color: '#334155' }}>

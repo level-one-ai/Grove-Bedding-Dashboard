@@ -1,352 +1,400 @@
 import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
-import { CheckCircle2, XCircle, ExternalLink, Webhook, Brain, Truck, Printer, AlertTriangle, Clock, RefreshCw, type LucideIcon } from 'lucide-react';
+import {
+  Zap, CheckCircle2, XCircle, RefreshCw,
+  ChevronRight, AlertTriangle, Clock,
+  Webhook, Brain, Printer, Truck, FileText, Tag,
+  PhoneCall, type LucideIcon,
+} from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
-interface LogEntry {
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface AutomationRun {
+  id: string;
   time: string;
-  event: string;
+  date: string;
   status: 'success' | 'failed' | 'warning';
-  result: string;
-  workflow: WorkflowStep[];
+  detail: string;
+  duration: string;
 }
 
-interface WorkflowStep {
+interface Automation {
+  id: string;
+  name: string;
+  description: string;
   icon: LucideIcon;
-  label: string;
-  status: 'success' | 'error' | 'pending';
-  timestamp?: string;
   color: string;
+  bg: string;
+  border: string;
+  runsThisMonth: number;
+  failuresThisMonth: number;
+  lastRun: string;
+  lastStatus: 'success' | 'failed' | 'warning' | 'idle';
+  recentRuns: AutomationRun[];
 }
 
-const workflowTemplates: Record<string, WorkflowStep[]> = {
-  'Cin7 Webhook': [
-    { icon: Webhook, label: 'Cin7 Omni Webhook', status: 'success', timestamp: '09:14:02', color: '#3b82f6' },
-    { icon: Brain, label: 'Data Validation', status: 'success', timestamp: '09:14:03', color: '#22c55e' },
-    { icon: Truck, label: 'Order Creation', status: 'success', timestamp: '09:14:05', color: '#0ea5e9' },
-  ],
-  'Claude AI Extraction': [
-    { icon: Webhook, label: 'PDF Upload', status: 'success', timestamp: '09:14:10', color: '#3b82f6' },
-    { icon: Brain, label: 'Claude AI Parse', status: 'success', timestamp: '09:14:11', color: '#8b5cf6' },
-    { icon: Printer, label: 'Data Extraction', status: 'success', timestamp: '09:14:13', color: '#0ea5e9' },
-  ],
-  'Spoke Dispatch': [
-    { icon: Webhook, label: 'Route Request', status: 'success', timestamp: '09:14:15', color: '#3b82f6' },
-    { icon: Truck, label: 'Driver Assignment', status: 'success', timestamp: '09:14:16', color: '#22c55e' },
-    { icon: Printer, label: 'Dispatch Confirm', status: 'success', timestamp: '09:14:18', color: '#0ea5e9' },
-  ],
-  'Dymo Print': [
-    { icon: Webhook, label: 'Print Request', status: 'success', timestamp: '09:14:20', color: '#3b82f6' },
-    { icon: Printer, label: 'Dymo Connect', status: 'error', timestamp: '09:14:22', color: '#ef4444' },
-    { icon: AlertTriangle, label: 'Retry Queued', status: 'pending', timestamp: '09:14:25', color: '#f59e0b' },
-  ],
-};
+// ─── Automation definitions ───────────────────────────────────────────────────
+// These represent every automation in the system, shown once with monthly counts.
 
-const logEntries: LogEntry[] = [
-  { time: '09:14:02', event: 'Cin7 Webhook', status: 'success', result: 'SO-402 created', workflow: workflowTemplates['Cin7 Webhook'] },
-  { time: '09:14:11', event: 'Claude AI Extraction', status: 'success', result: '6 fields parsed', workflow: workflowTemplates['Claude AI Extraction'] },
-  { time: '09:14:15', event: 'Spoke Dispatch', status: 'success', result: 'Route assigned', workflow: workflowTemplates['Spoke Dispatch'] },
-  { time: '09:14:22', event: 'Dymo Print', status: 'failed', result: 'Retry queued', workflow: workflowTemplates['Dymo Print'] },
-  { time: '09:15:03', event: 'Cin7 Webhook', status: 'success', result: 'SO-403 created', workflow: workflowTemplates['Cin7 Webhook'] },
-  { time: '09:15:18', event: 'Claude AI Extraction', status: 'success', result: '8 fields parsed', workflow: workflowTemplates['Claude AI Extraction'] },
-  { time: '09:15:25', event: 'Spoke Dispatch', status: 'success', result: 'Driver notified', workflow: workflowTemplates['Spoke Dispatch'] },
-  { time: '09:15:42', event: 'Dymo Print', status: 'success', result: 'Label printed', workflow: workflowTemplates['Dymo Print'] },
-  { time: '09:16:05', event: 'Cin7 Webhook', status: 'success', result: 'SO-404 created', workflow: workflowTemplates['Cin7 Webhook'] },
-  { time: '09:16:14', event: 'Claude AI Extraction', status: 'success', result: '5 fields parsed', workflow: workflowTemplates['Claude AI Extraction'] },
+const automations: Automation[] = [
+  {
+    id: 'cin7-webhook',
+    name: 'Cin7 Order Webhook',
+    description: 'Triggered when a new order is created or updated in Cin7 Omni',
+    icon: Webhook,
+    color: '#3b82f6',
+    bg: '#eff6ff',
+    border: '#bfdbfe',
+    runsThisMonth: 247,
+    failuresThisMonth: 3,
+    lastRun: '09:14 today',
+    lastStatus: 'success',
+    recentRuns: [
+      { id: 'r1', time: '09:14', date: '24 Mar', status: 'success', detail: 'SO-1021 created — Acme Furniture Co', duration: '0.3s' },
+      { id: 'r2', time: '09:15', date: '24 Mar', status: 'success', detail: 'SO-1020 created — SleepWell Retailers', duration: '0.2s' },
+      { id: 'r3', time: '08:45', date: '24 Mar', status: 'failed', detail: 'Timeout — Cin7 API did not respond', duration: '30s' },
+      { id: 'r4', time: '16:30', date: '23 Mar', status: 'success', detail: 'SO-1019 created — Comfort Home Store', duration: '0.3s' },
+      { id: 'r5', time: '14:15', date: '23 Mar', status: 'success', detail: 'SO-1018 updated — Dream Sleep Outlet', duration: '0.2s' },
+    ],
+  },
+  {
+    id: 'pdf-router',
+    name: 'PDF Router Processing',
+    description: 'Scans OneDrive, extracts data with Claude AI, files to Google Drive and OneDrive',
+    icon: FileText,
+    color: '#8b5cf6',
+    bg: '#faf5ff',
+    border: '#e9d5ff',
+    runsThisMonth: 89,
+    failuresThisMonth: 1,
+    lastRun: '11:32 today',
+    lastStatus: 'success',
+    recentRuns: [
+      { id: 'r1', time: '11:32', date: '24 Mar', status: 'success', detail: 'invoice_birlea_march.pdf — 3 pages processed', duration: '2m 14s' },
+      { id: 'r2', time: '10:05', date: '24 Mar', status: 'success', detail: 'po_acme_furniture.pdf — 1 page processed', duration: '45s' },
+      { id: 'r3', time: '16:22', date: '23 Mar', status: 'failed', detail: 'corrupt_scan.pdf — could not parse page 2', duration: '1m 02s' },
+      { id: 'r4', time: '14:50', date: '23 Mar', status: 'success', detail: 'delivery_note_0324.pdf — 5 pages processed', duration: '3m 38s' },
+      { id: 'r5', time: '09:30', date: '23 Mar', status: 'success', detail: 'order_sleepwell.pdf — 2 pages processed', duration: '1m 22s' },
+    ],
+  },
+  {
+    id: 'label-print',
+    name: 'Label Print Automation',
+    description: 'Builds DYMO label from Cin7 order data and sends to office PC bridge agent',
+    icon: Tag,
+    color: '#10b981',
+    bg: '#f0fdf4',
+    border: '#bbf7d0',
+    runsThisMonth: 187,
+    failuresThisMonth: 4,
+    lastRun: '13:44 today',
+    lastStatus: 'success',
+    recentRuns: [
+      { id: 'r1', time: '13:44', date: '24 Mar', status: 'success', detail: 'SO-1021 — Acme Furniture Co · DYMO 5XL', duration: '2s' },
+      { id: 'r2', time: '13:30', date: '24 Mar', status: 'success', detail: 'SO-1020 — SleepWell Retailers · DYMO 5XL', duration: '1s' },
+      { id: 'r3', time: '11:15', date: '24 Mar', status: 'failed', detail: 'Bridge agent offline — could not reach printer', duration: '30s' },
+      { id: 'r4', time: '10:22', date: '24 Mar', status: 'success', detail: 'SO-1019 — Comfort Home Store · DYMO 5XL', duration: '2s' },
+      { id: 'r5', time: '09:55', date: '24 Mar', status: 'success', detail: 'SO-1018 — Dream Sleep Outlet · DYMO 5XL', duration: '1s' },
+    ],
+  },
+  {
+    id: 'spoke-dispatch',
+    name: 'Spoke Dispatch Routing',
+    description: 'Routes delivery orders through Spoke and assigns drivers',
+    icon: Truck,
+    color: '#0ea5e9',
+    bg: '#f0f9ff',
+    border: '#bae6fd',
+    runsThisMonth: 156,
+    failuresThisMonth: 0,
+    lastRun: '14:10 today',
+    lastStatus: 'success',
+    recentRuns: [
+      { id: 'r1', time: '14:10', date: '24 Mar', status: 'success', detail: 'SO-1021 routed — Driver assigned · Birmingham', duration: '0.8s' },
+      { id: 'r2', time: '13:55', date: '24 Mar', status: 'success', detail: 'SO-1020 routed — Driver assigned · Manchester', duration: '0.7s' },
+      { id: 'r3', time: '10:30', date: '24 Mar', status: 'success', detail: 'SO-1019 routed — Driver assigned · Leeds', duration: '0.9s' },
+      { id: 'r4', time: '16:45', date: '23 Mar', status: 'success', detail: 'SO-1018 routed — Driver assigned · Sheffield', duration: '0.8s' },
+      { id: 'r5', time: '15:20', date: '23 Mar', status: 'success', detail: 'SO-1017 routed — Driver assigned · London', duration: '0.7s' },
+    ],
+  },
+  {
+    id: 'claude-extraction',
+    name: 'Claude AI Data Extraction',
+    description: 'Extracts structured data from PDF pages via Make.com webhook',
+    icon: Brain,
+    color: '#f59e0b',
+    bg: '#fffbeb',
+    border: '#fde68a',
+    runsThisMonth: 312,
+    failuresThisMonth: 2,
+    lastRun: '11:34 today',
+    lastStatus: 'success',
+    recentRuns: [
+      { id: 'r1', time: '11:34', date: '24 Mar', status: 'success', detail: 'Page 1 of invoice_birlea_march.pdf — 7 fields extracted', duration: '4.2s' },
+      { id: 'r2', time: '11:33', date: '24 Mar', status: 'success', detail: 'Page 2 of invoice_birlea_march.pdf — 5 fields extracted', duration: '3.8s' },
+      { id: 'r3', time: '10:07', date: '24 Mar', status: 'success', detail: 'Page 1 of po_acme_furniture.pdf — 6 fields extracted', duration: '4.5s' },
+      { id: 'r4', time: '16:25', date: '23 Mar', status: 'failed', detail: 'corrupt_scan.pdf page 2 — unreadable content', duration: '8s' },
+      { id: 'r5', time: '14:52', date: '23 Mar', status: 'success', detail: 'Page 1 of delivery_note_0324.pdf — 8 fields extracted', duration: '3.9s' },
+    ],
+  },
+  {
+    id: 'outbound-calls',
+    name: 'Outbound Call Agent',
+    description: 'Automated calls to confirm orders, delivery windows and amendments',
+    icon: PhoneCall,
+    color: '#ec4899',
+    bg: '#fdf2f8',
+    border: '#f9a8d4',
+    runsThisMonth: 74,
+    failuresThisMonth: 6,
+    lastRun: '13:15 today',
+    lastStatus: 'success',
+    recentRuns: [
+      { id: 'r1', time: '13:15', date: '24 Mar', status: 'success', detail: 'Nordic Sleep Co — Delivery instructions updated · 3m 22s', duration: '3m 22s' },
+      { id: 'r2', time: '11:30', date: '24 Mar', status: 'failed', detail: 'BedCraft Interiors — Connection error after 45s', duration: '45s' },
+      { id: 'r3', time: '10:45', date: '24 Mar', status: 'success', detail: 'Dream Sleep Outlet — Order amended, qty updated · 6m 04s', duration: '6m 04s' },
+      { id: 'r4', time: '10:15', date: '24 Mar', status: 'warning', detail: 'Comfort Home Store — No answer, voicemail left', duration: '0m 45s' },
+      { id: 'r5', time: '09:52', date: '24 Mar', status: 'success', detail: 'SleepWell Retailers — Delivery window confirmed · 2m 18s', duration: '2m 18s' },
+    ],
+  },
+  {
+    id: 'dymo-bridge',
+    name: 'DYMO Bridge Agent',
+    description: 'Windows PC agent that polls Firestore and sends labels to the physical printer',
+    icon: Printer,
+    color: '#64748b',
+    bg: '#f8fafc',
+    border: '#e2e8f0',
+    runsThisMonth: 187,
+    failuresThisMonth: 4,
+    lastRun: '13:44 today',
+    lastStatus: 'success',
+    recentRuns: [
+      { id: 'r1', time: '13:44', date: '24 Mar', status: 'success', detail: 'Print job received — DYMO LabelWriter 5 XL', duration: '2s' },
+      { id: 'r2', time: '13:30', date: '24 Mar', status: 'success', detail: 'Print job received — DYMO LabelWriter 5 XL', duration: '1s' },
+      { id: 'r3', time: '11:15', date: '24 Mar', status: 'failed', detail: 'Bridge offline — heartbeat missed for 5 minutes', duration: '—' },
+      { id: 'r4', time: '10:22', date: '24 Mar', status: 'success', detail: 'Print job received — DYMO LabelWriter 5 XL', duration: '2s' },
+      { id: 'r5', time: '09:55', date: '24 Mar', status: 'success', detail: 'Print job received — DYMO LabelWriter 5 XL', duration: '1s' },
+    ],
+  },
 ];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function RunRow({ run }: { run: AutomationRun }) {
+  const cfg = {
+    success: { dot: '#10b981', text: '#065f46', bg: '#f0fdf4', bo: '#bbf7d0', label: 'Success' },
+    failed:  { dot: '#ef4444', text: '#991b1b', bg: '#fef2f2', bo: '#fecaca', label: 'Failed' },
+    warning: { dot: '#f59e0b', text: '#92400e', bg: '#fffbeb', bo: '#fde68a', label: 'Warning' },
+  }[run.status];
+
+  return (
+    <div className="flex items-center gap-3 py-2.5 px-4" style={{ borderBottom: '1px solid #f8fafc' }}>
+      <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: cfg.dot }} />
+      <div className="flex-1 min-w-0">
+        <p className="font-inter text-xs truncate" style={{ color: '#334155' }}>{run.detail}</p>
+      </div>
+      <div className="text-right flex-shrink-0">
+        <p className="font-mono text-[10px]" style={{ color: '#94a3b8' }}>{run.time} · {run.date}</p>
+        <p className="font-mono text-[10px]" style={{ color: '#cbd5e1' }}>{run.duration}</p>
+      </div>
+      <div className="px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: cfg.bg, border: `1px solid ${cfg.bo}` }}>
+        <span className="font-sora text-[9px] font-semibold" style={{ color: cfg.text }}>{cfg.label}</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function AutomationStream() {
   const sectionRef = useRef<HTMLDivElement>(null);
-  const [selectedWorkflow, setSelectedWorkflow] = useState<LogEntry | null>(null);
-  const [workflowDialogOpen, setWorkflowDialogOpen] = useState(false);
+  const [selected, setSelected] = useState<Automation | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      gsap.fromTo(
-        sectionRef.current,
-        { opacity: 0, y: 12 },
-        { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }
+      gsap.fromTo('.auto-row',
+        { x: -10, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.4, stagger: 0.06, ease: 'power2.out' }
       );
     }, sectionRef);
-
     return () => ctx.revert();
   }, []);
 
-  const handleRowClick = (entry: LogEntry) => {
-    setSelectedWorkflow(entry);
-    setWorkflowDialogOpen(true);
-  };
+  const now = new Date();
+  const monthName = now.toLocaleString('en-GB', { month: 'long', year: 'numeric' });
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'success':
-        return <CheckCircle2 className="w-4 h-4" style={{ color: '#22c55e' }} />;
-      case 'failed':
-        return <XCircle className="w-4 h-4" style={{ color: '#ef4444' }} />;
-      case 'warning':
-        return <AlertTriangle className="w-4 h-4" style={{ color: '#f59e0b' }} />;
-      default:
-        return null;
-    }
-  };
+  const totalRuns     = automations.reduce((s, a) => s + a.runsThisMonth, 0);
+  const totalFailures = automations.reduce((s, a) => s + a.failuresThisMonth, 0);
 
-  const getStatusDotColor = (status: string) => {
-    switch (status) {
-      case 'success': return '#22c55e';
-      case 'failed': return '#ef4444';
-      case 'warning': return '#f59e0b';
-      default: return '#cbd5e1';
-    }
-  };
+  function handleClick(a: Automation) {
+    setSelected(a);
+    setDialogOpen(true);
+  }
 
   return (
     <div
-      id="logs"
       ref={sectionRef}
-      className="relative w-full h-full overflow-hidden"
-      style={{ background: '#ffffff' }}
+      className="w-full min-h-screen overflow-y-auto"
+      style={{ background: '#f8fafc', paddingBottom: '48px' }}
     >
-      {/* Subtle dot grid */}
-      <div
-        className="absolute inset-0 opacity-[0.5]"
-        style={{
-          backgroundImage: `radial-gradient(circle, #cbd5e1 1px, transparent 1px)`,
-          backgroundSize: '28px 28px',
-        }}
-      />
+      <div className="max-w-[1000px] mx-auto px-6 py-6">
 
-      <div className="relative z-10 h-full flex flex-col max-w-5xl mx-auto px-8 py-4">
         {/* Header */}
-        <div className="mb-4 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ background: '#f0f9ff', border: '1px solid #bae6fd' }}
-            >
-              <Clock className="w-4 h-4" style={{ color: '#0ea5e9' }} />
-            </div>
-            <div>
-              <h2 className="font-sora font-bold text-xl" style={{ color: '#1e293b' }}>
-                Automation
-              </h2>
-              <p className="font-inter text-xs" style={{ color: '#64748b' }}>
-                Click any entry to view workflow
-              </p>
-            </div>
+        <div className="mb-5 flex items-start justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="font-sora font-bold text-2xl" style={{ color: '#1e293b' }}>Automations</h1>
+            <p className="font-inter text-sm mt-0.5" style={{ color: '#94a3b8' }}>
+              All automations in the system · Resets 1st of each month
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-emerald animate-pulse" />
-            <span className="font-mono text-[10px] text-emerald">Live</span>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="px-3 py-1.5 rounded-xl" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+              <span className="font-mono text-xs font-semibold" style={{ color: '#166534' }}>{totalRuns.toLocaleString()} runs</span>
+            </div>
+            {totalFailures > 0 && (
+              <div className="px-3 py-1.5 rounded-xl" style={{ background: '#fef2f2', border: '1px solid #fecaca' }}>
+                <span className="font-mono text-xs font-semibold" style={{ color: '#991b1b' }}>{totalFailures} failures</span>
+              </div>
+            )}
+            <div className="px-3 py-1.5 rounded-xl" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+              <span className="font-mono text-xs" style={{ color: '#94a3b8' }}>{monthName}</span>
+            </div>
           </div>
         </div>
 
-        {/* Log List — 2-col grid */}
-        <div className="grid grid-cols-2 gap-2 overflow-y-auto content-start flex-1 min-h-0">
-          {logEntries.map((entry, index) => (
-            <div
-              key={index}
-              onClick={() => handleRowClick(entry)}
-              className="glass-card p-3 flex items-center gap-3 hover:shadow-md transition-all duration-300 cursor-pointer group h-fit"
-            >
-              {/* Time Badge */}
-              <div className="font-mono text-[10px] w-12 flex-shrink-0" style={{ color: '#94a3b8' }}>
-                {entry.time}
-              </div>
+        {/* Automation list */}
+        <div className="rounded-2xl overflow-hidden" style={{ background: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          {automations.map((auto, idx) => {
+            const Icon = auto.icon;
+            const statusCfg = {
+              success: { dot: '#10b981', label: 'Last run succeeded' },
+              failed:  { dot: '#ef4444', label: 'Last run failed' },
+              warning: { dot: '#f59e0b', label: 'Last run had warnings' },
+              idle:    { dot: '#94a3b8', label: 'No recent runs' },
+            }[auto.lastStatus];
 
-              {/* Status Dot */}
+            return (
               <div
-                className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                style={{ background: getStatusDotColor(entry.status) }}
-              />
+                key={auto.id}
+                className="auto-row flex items-center gap-4 px-5 py-4 cursor-pointer hover:bg-slate-50 transition-all duration-200 group"
+                style={{ borderBottom: idx < automations.length - 1 ? '1px solid #f1f5f9' : 'none' }}
+                onClick={() => handleClick(auto)}
+              >
+                {/* Icon */}
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: auto.bg, border: `1px solid ${auto.border}` }}>
+                  <Icon className="w-5 h-5" style={{ color: auto.color }} />
+                </div>
 
-              {/* Event Name */}
-              <div className="flex-1 min-w-0">
-                <span
-                  className="font-sora font-medium text-xs group-hover:text-orange-500 transition-colors"
-                  style={{ color: '#334155' }}
-                >
-                  {entry.event}
-                </span>
-              </div>
+                {/* Name + description */}
+                <div className="flex-1 min-w-0">
+                  <p className="font-sora font-semibold text-sm group-hover:text-sky-600 transition-colors" style={{ color: '#1e293b' }}>
+                    {auto.name}
+                  </p>
+                  <p className="font-inter text-xs mt-0.5 truncate" style={{ color: '#94a3b8' }}>
+                    {auto.description}
+                  </p>
+                </div>
 
-              {/* Result */}
-              <div className="flex items-center gap-1.5 flex-shrink-0">
-                {getStatusIcon(entry.status)}
-                <span
-                  className="font-mono text-[10px]"
-                  style={{
-                    color: entry.status === 'failed' ? '#ef4444' :
-                           entry.status === 'warning' ? '#f59e0b' :
-                           '#94a3b8'
-                  }}
-                >
-                  {entry.result}
-                </span>
-              </div>
+                {/* Stats */}
+                <div className="flex items-center gap-4 flex-shrink-0">
+                  {/* Runs this month */}
+                  <div className="text-center hidden sm:block">
+                    <p className="font-sora font-bold text-lg" style={{ color: '#1e293b' }}>{auto.runsThisMonth}</p>
+                    <p className="font-mono text-[9px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>runs</p>
+                  </div>
 
-              {/* View Icon */}
-              <ExternalLink className="w-3 h-3 flex-shrink-0 text-slate-300 group-hover:text-orange-400 transition-colors" />
-            </div>
-          ))}
-        </div>
+                  {/* Failures */}
+                  <div className="text-center hidden sm:block">
+                    <p className="font-sora font-bold text-lg" style={{ color: auto.failuresThisMonth > 0 ? '#ef4444' : '#10b981' }}>
+                      {auto.failuresThisMonth}
+                    </p>
+                    <p className="font-mono text-[9px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>failed</p>
+                  </div>
 
-        {/* Failed Automations Panel */}
-        {(() => {
-          const failedEntries = logEntries.filter(e => e.status === 'failed');
-          if (failedEntries.length === 0) return null;
-          return (
-            <div
-              className="flex-shrink-0 mt-3 rounded-2xl p-4"
-              style={{ background: '#fef2f2', border: '1px solid #fecaca' }}
-            >
-              <div className="flex items-center gap-2 mb-3">
-                <AlertTriangle className="w-4 h-4" style={{ color: '#ef4444' }} />
-                <h3 className="font-sora font-semibold text-sm" style={{ color: '#dc2626' }}>Failed Automations</h3>
-                <span
-                  className="ml-auto px-2 py-0.5 rounded-lg font-mono text-[10px]"
-                  style={{ background: '#fecaca', color: '#dc2626' }}
-                >
-                  {failedEntries.length} issue{failedEntries.length > 1 ? 's' : ''}
-                </span>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                {failedEntries.map((entry, idx) => {
-                  const errorStep = entry.workflow.find(s => s.status === 'error');
-                  const pendingStep = entry.workflow.find(s => s.status === 'pending');
-                  return (
-                    <div
-                      key={idx}
-                      onClick={() => handleRowClick(entry)}
-                      className="bg-white rounded-xl p-3 hover:shadow-sm transition-all cursor-pointer group"
-                      style={{ border: '1px solid #fecaca' }}
-                    >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <div className="flex items-center gap-2">
-                          <XCircle className="w-3.5 h-3.5" style={{ color: '#ef4444' }} />
-                          <span className="font-sora font-semibold text-sm" style={{ color: '#1e293b' }}>
-                            {entry.event}
-                          </span>
-                        </div>
-                        <span className="font-mono text-[10px]" style={{ color: '#94a3b8' }}>{entry.time}</span>
-                      </div>
-                      {errorStep && (
-                        <p className="font-inter text-xs mb-1" style={{ color: '#ef4444' }}>
-                          Failed at <span className="font-semibold">{errorStep.label}</span> — connection could not be established
-                        </p>
-                      )}
-                      <div className="flex items-center justify-between">
-                        <p className="font-mono text-[10px]" style={{ color: '#94a3b8' }}>
-                          Result: {entry.result}{pendingStep ? ` · ${pendingStep.label}` : ''}
-                        </p>
-                        <button className="flex items-center gap-1 text-[10px] font-sora" style={{ color: '#0ea5e9' }}>
-                          <RefreshCw className="w-3 h-3" /> Retry
-                        </button>
-                      </div>
+                  {/* Last run + status */}
+                  <div className="text-right hidden md:block">
+                    <div className="flex items-center gap-1.5 justify-end">
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ background: statusCfg.dot }} />
+                      <p className="font-mono text-[10px]" style={{ color: '#64748b' }}>{auto.lastRun}</p>
                     </div>
-                  );
-                })}
+                    <p className="font-mono text-[9px] mt-0.5" style={{ color: '#94a3b8' }}>{statusCfg.label}</p>
+                  </div>
+                </div>
+
+                {/* Arrow */}
+                <ChevronRight className="w-4 h-4 flex-shrink-0 text-slate-300 group-hover:text-sky-400 transition-colors" />
               </div>
-            </div>
-          );
-        })()}
+            );
+          })}
+        </div>
       </div>
 
-      {/* Workflow Dialog — Horizontal Make.com Style */}
-      <Dialog open={workflowDialogOpen} onOpenChange={setWorkflowDialogOpen}>
-        <DialogContent className="max-w-2xl" style={{ background: '#ffffff', border: '1px solid #e2e8f0' }}>
-          <DialogHeader>
-            <DialogTitle className="font-sora font-bold text-xl flex items-center gap-3" style={{ color: '#1e293b' }}>
-              {selectedWorkflow && getStatusIcon(selectedWorkflow.status)}
-              {selectedWorkflow?.event} Workflow
-            </DialogTitle>
-          </DialogHeader>
-
-          {selectedWorkflow && (
-            <div className="mt-2">
-              <p className="font-mono text-xs mb-8" style={{ color: '#94a3b8' }}>
-                Triggered at {selectedWorkflow.time} • Result: {selectedWorkflow.result}
-              </p>
-
-              {/* ── Horizontal Make.com Style Workflow ── */}
-              <div className="flex items-start justify-center gap-0 overflow-x-auto pb-4">
-                {selectedWorkflow.workflow.map((step, idx) => (
-                  <div key={idx} className="flex items-center flex-shrink-0">
-
-                    {/* Module + Label + Status */}
-                    <div className="flex flex-col items-center gap-2 w-28">
-                      {/* Circle */}
-                      <div
-                        className="w-14 h-14 rounded-full flex items-center justify-center border-2 transition-all"
-                        style={{
-                          background: '#ffffff',
-                          borderColor: step.color,
-                          boxShadow: `0 0 16px ${step.color}30, 0 2px 8px rgba(0,0,0,0.08)`,
-                        }}
-                      >
-                        <step.icon className="w-6 h-6" style={{ color: step.color }} />
-                      </div>
-
-                      {/* Label */}
-                      <span
-                        className="font-sora font-medium text-xs text-center leading-tight"
-                        style={{ color: '#334155' }}
-                      >
-                        {step.label}
-                      </span>
-
-                      {/* Status */}
-                      <div className="flex items-center gap-1">
-                        <div
-                          className="w-1.5 h-1.5 rounded-full"
-                          style={{
-                            background: step.status === 'success' ? '#22c55e' :
-                                        step.status === 'error' ? '#ef4444' : '#f59e0b',
-                          }}
-                        />
-                        <span
-                          className="font-mono text-[9px] uppercase"
-                          style={{
-                            color: step.status === 'success' ? '#22c55e' :
-                                   step.status === 'error' ? '#ef4444' : '#f59e0b',
-                          }}
-                        >
-                          {step.status}
-                        </span>
-                      </div>
-
-                      {/* Timestamp */}
-                      {step.timestamp && (
-                        <span className="font-mono text-[9px]" style={{ color: '#cbd5e1' }}>
-                          {step.timestamp}
-                        </span>
-                      )}
+      {/* ── Detail Dialog ── */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent
+          className="max-w-2xl"
+          style={{
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            maxHeight: '80vh',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          {selected && (() => {
+            const Icon = selected.icon;
+            const successCount  = selected.recentRuns.filter(r => r.status === 'success').length;
+            const failedCount   = selected.recentRuns.filter(r => r.status === 'failed').length;
+            const warningCount  = selected.recentRuns.filter(r => r.status === 'warning').length;
+            return (
+              <>
+                <DialogHeader className="flex-shrink-0">
+                  <DialogTitle className="font-sora font-bold text-lg flex items-center gap-3" style={{ color: '#1e293b' }}>
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ background: selected.bg, border: `1px solid ${selected.border}` }}>
+                      <Icon className="w-5 h-5" style={{ color: selected.color }} />
                     </div>
+                    {selected.name}
+                  </DialogTitle>
+                  <p className="font-inter text-sm mt-1" style={{ color: '#64748b' }}>{selected.description}</p>
+                </DialogHeader>
 
-                    {/* Connector arrow */}
-                    {idx < selectedWorkflow.workflow.length - 1 && (
-                      <div className="flex items-center mb-10 flex-shrink-0">
-                        <div
-                          className="h-0.5 w-10"
-                          style={{
-                            background: `linear-gradient(90deg, ${step.color}80, ${selectedWorkflow.workflow[idx + 1].color}80)`,
-                          }}
-                        />
-                        <div
-                          className="w-0 h-0 -ml-px"
-                          style={{
-                            borderTop: '4px solid transparent',
-                            borderBottom: '4px solid transparent',
-                            borderLeft: `6px solid ${selectedWorkflow.workflow[idx + 1].color}80`,
-                          }}
-                        />
-                      </div>
-                    )}
+                {/* Stats row */}
+                <div className="grid grid-cols-3 gap-3 mt-4 flex-shrink-0">
+                  {[
+                    { label: 'Runs this month', value: selected.runsThisMonth, color: '#1e293b' },
+                    { label: 'Failures',         value: selected.failuresThisMonth, color: selected.failuresThisMonth > 0 ? '#ef4444' : '#10b981' },
+                    { label: 'Success rate',     value: `${Math.round((selected.runsThisMonth - selected.failuresThisMonth) / selected.runsThisMonth * 100)}%`, color: '#10b981' },
+                  ].map(s => (
+                    <div key={s.label} className="p-3 rounded-xl text-center" style={{ background: '#f8fafc', border: '1px solid #f1f5f9' }}>
+                      <p className="font-sora font-bold text-xl" style={{ color: s.color }}>{s.value}</p>
+                      <p className="font-inter text-[10px] mt-0.5" style={{ color: '#94a3b8' }}>{s.label}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Recent runs — scrollable */}
+                <div className="mt-4 flex-1 overflow-hidden flex flex-col min-h-0">
+                  <div className="flex items-center gap-2 mb-2 flex-shrink-0 px-4">
+                    <Clock className="w-3.5 h-3.5" style={{ color: '#94a3b8' }} />
+                    <h3 className="font-sora font-semibold text-sm" style={{ color: '#1e293b' }}>Recent Runs</h3>
+                    <div className="flex items-center gap-2 ml-auto">
+                      {successCount > 0 && <span className="font-mono text-[10px]" style={{ color: '#10b981' }}>{successCount} ok</span>}
+                      {failedCount > 0  && <span className="font-mono text-[10px]" style={{ color: '#ef4444' }}>{failedCount} failed</span>}
+                      {warningCount > 0 && <span className="font-mono text-[10px]" style={{ color: '#f59e0b' }}>{warningCount} warnings</span>}
+                    </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                  <div className="overflow-y-auto flex-1 rounded-xl" style={{ border: '1px solid #f1f5f9' }}>
+                    {selected.recentRuns.map(run => <RunRow key={run.id} run={run} />)}
+                  </div>
+                </div>
+              </>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>

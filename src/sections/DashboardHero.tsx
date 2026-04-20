@@ -1,56 +1,40 @@
 import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import {
-  Cloud,
-  TrafficCone,
-  Bell,
-  Film,
-  UtensilsCrossed,
-  ShoppingBag,
-  RefreshCw,
-  AlertCircle,
-  Webhook,
-  Brain,
-  Truck,
-  Printer,
-  Database,
-  CheckCircle2,
+  FileText, Printer, Truck, PhoneCall,
+  CheckCircle2, AlertCircle, Clock,
+  TrendingUp, Package, MapPin,
 } from 'lucide-react';
 
-const automationCards = [
-  { icon: Cloud, label: 'WEATHER', desc: 'Order ETD Date changes', progress: 62, color: '#3b82f6' },
-  { icon: TrafficCone, label: 'TRAFFIC', desc: 'Spoke Dispatch Routes', progress: 62, color: '#0ea5e9' },
-  { icon: Bell, label: 'ALERTS', desc: 'Print Label Automation', progress: 62, color: '#f59e0b' },
-  { icon: Film, label: 'MONITOR', desc: 'Graph Site Monitoring', progress: 62, color: '#8b5cf6' },
-  { icon: UtensilsCrossed, label: 'STOCK', desc: 'Bedding Stock Levels', progress: 65, color: '#22c55e' },
-  { icon: ShoppingBag, label: 'ACCOUNTS', desc: 'Customer Accounts', progress: 45, color: '#0ea5e9' },
+// ── Mock activity data — will be replaced with real API calls ──────────────────
+
+const recentDeliveries = [
+  { ref: 'SO-1021', client: 'Acme Furniture Co', address: '123 High St, Birmingham, B1 1AA', items: 'Memory Foam Mattress ×10, Pillow Top ×6', date: '24 Mar 2026', status: 'delivered' },
+  { ref: 'SO-1020', client: 'SleepWell Retailers', address: '45 Commerce Park, Manchester, M1 2BC', items: 'Weighted Blanket ×8, Mattress Protector ×12', date: '24 Mar 2026', status: 'delivered' },
+  { ref: 'SO-1019', client: 'Comfort Home Store', address: '78 Retail Ave, Leeds, LS1 3DE', items: 'Luxury Bed Sheets ×20', date: '23 Mar 2026', status: 'delivered' },
+  { ref: 'SO-1018', client: 'Dream Sleep Outlet', address: '99 Market St, Sheffield, S1 2GH', items: 'Down Pillow ×25, Mattress Protector ×10', date: '23 Mar 2026', status: 'delivered' },
+  { ref: 'SO-1017', client: 'BedCraft Interiors', address: '12 Kings Rd, London, EC1 4AB', items: 'Memory Foam Mattress ×5', date: '22 Mar 2026', status: 'pending' },
 ];
 
-const workflowSteps = [
-  { icon: Webhook, label: 'Cin7 Omni Webhook', status: 'success', color: '#3b82f6' },
-  { icon: Brain, label: 'Claude AI Reader', status: 'success', color: '#22c55e' },
-  { icon: Truck, label: 'Spoke Dispatch', status: 'success', color: '#0ea5e9' },
-  { icon: Printer, label: 'Dymo Printer', status: 'error', color: '#ef4444' },
+const pdfStats = [
+  { label: 'Processed today', value: '14', color: '#0ea5e9' },
+  { label: 'Filed this week', value: '87', color: '#10b981' },
+  { label: 'Pending', value: '2', color: '#f59e0b' },
+  { label: 'Failed', value: '0', color: '#ef4444' },
 ];
 
-const ordersToday = [
-  { ref: 'SO-402', client: 'Acme Furniture Co.', time: '09:14 AM' },
-  { ref: 'SO-403', client: 'SleepWell Retailers', time: '09:15 AM' },
-  { ref: 'SO-404', client: 'Comfort Home Store', time: '09:16 AM' },
-  { ref: 'SO-1020', client: 'Dream Sleep Outlet', time: '09:30 AM' },
-  { ref: 'SO-1021', client: 'Bedding World', time: '09:45 AM' },
-  { ref: 'SO-1022', client: 'Rest & Relax Co.', time: '10:00 AM' },
+const recentCalls = [
+  { ref: 'CALL-006', client: 'Nordic Sleep Co', outcome: 'Delivery instructions updated', time: '13:15', date: '24 Mar', status: 'completed' },
+  { ref: 'CALL-005', client: 'BedCraft Interiors', outcome: 'Call failed — connection error', time: '11:30', date: '24 Mar', status: 'failed' },
+  { ref: 'CALL-004', client: 'Dream Sleep Outlet', outcome: 'Order amended — qty updated', time: '10:45', date: '24 Mar', status: 'completed' },
+  { ref: 'CALL-003', client: 'Comfort Home Store', outcome: 'No answer — voicemail left', time: '10:15', date: '24 Mar', status: 'no-answer' },
 ];
 
-const activeSyncs = [
-  { from: 'Cin7 Omni', to: 'Shopify' },
-  { from: 'Customer DB', to: 'Mailchimp' },
-  { from: 'Order Feed', to: 'Spoke' },
-  { from: 'Stock Levels', to: 'WMS' },
-  { from: 'Invoice API', to: 'Xero' },
-  { from: 'Route Data', to: 'Maps API' },
-  { from: 'Printer Queue', to: 'Dymo 5XL' },
-  { from: 'Label Gen', to: 'PDF Store' },
+const labelStats = [
+  { label: 'Printed today', value: '32', color: '#10b981' },
+  { label: 'Queued', value: '3', color: '#f59e0b' },
+  { label: 'Failed', value: '1', color: '#ef4444' },
+  { label: 'This week', value: '187', color: '#0ea5e9' },
 ];
 
 export default function DashboardHero() {
@@ -58,242 +42,212 @@ export default function DashboardHero() {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      gsap.fromTo(
-        sectionRef.current,
-        { opacity: 0, y: 12 },
-        { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }
+      gsap.fromTo('.hero-card',
+        { y: 20, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.5, stagger: 0.08, ease: 'power2.out', delay: 0.1 }
       );
     }, sectionRef);
-
     return () => ctx.revert();
   }, []);
 
   return (
     <div
-      id="dashboard"
       ref={sectionRef}
-      className="relative w-full h-full overflow-hidden"
-      style={{ background: '#ffffff' }}
+      className="w-full min-h-screen overflow-y-auto"
+      style={{ background: '#f8fafc', paddingBottom: '48px' }}
     >
-      {/* Subtle dot grid */}
-      <div
-        className="absolute inset-0 opacity-[0.5]"
-        style={{
-          backgroundImage: `radial-gradient(circle, #cbd5e1 1px, transparent 1px)`,
-          backgroundSize: '28px 28px',
-        }}
-      />
+      <div className="max-w-[1400px] mx-auto px-6 py-6">
 
-      {/* Main Content — 3-column layout */}
-      <div className="relative z-10 w-full h-full grid grid-cols-12 gap-4 px-8 pt-6 pb-4">
-
-        {/* ── Left Panel: Automation Stream ── */}
-        <div className="col-span-3 flex flex-col gap-3 min-h-0">
-          <div className="flex items-center justify-between mb-1">
-            <h3 className="font-sora font-semibold text-sm tracking-wide-custom uppercase" style={{ color: '#64748b' }}>
-              Automation Stream
-            </h3>
-            <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-emerald animate-pulse" />
-              <span className="font-mono text-[10px] text-emerald">Live</span>
-            </div>
+        {/* ── Page header ── */}
+        <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="font-sora font-bold text-2xl" style={{ color: '#1e293b' }}>System Overview</h1>
+            <p className="font-inter text-sm mt-0.5" style={{ color: '#94a3b8' }}>
+              Live activity across all Grove Bedding automations
+            </p>
           </div>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="font-mono text-xs font-semibold" style={{ color: '#166534' }}>All Systems Operational</span>
+          </div>
+        </div>
 
-          <div className="flex flex-col gap-2 overflow-y-auto flex-1 pr-1">
-            {automationCards.map((card, index) => (
-              <div
-                key={index}
-                className="glass-card p-3 hover:shadow-md transition-all duration-300 group cursor-pointer"
-              >
-                <div className="flex items-start gap-3">
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: `${card.color}15`, border: `1px solid ${card.color}30` }}
-                  >
-                    <card.icon className="w-4 h-4" style={{ color: card.color }} />
+        {/* ── Top stat row ── */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
+          {[
+            { icon: Truck,    label: 'Deliveries Today',    value: '12', sub: '4 pending',   color: '#0ea5e9', bg: '#f0f9ff', bo: '#bae6fd' },
+            { icon: Printer,  label: 'Labels Printed',      value: '32', sub: '3 queued',    color: '#10b981', bg: '#f0fdf4', bo: '#bbf7d0' },
+            { icon: FileText, label: 'PDFs Processed',      value: '14', sub: 'today',       color: '#8b5cf6', bg: '#faf5ff', bo: '#e9d5ff' },
+            { icon: PhoneCall,label: 'Calls Made',           value: '7',  sub: '1 failed',   color: '#f59e0b', bg: '#fffbeb', bo: '#fde68a' },
+          ].map(s => (
+            <div key={s.label} className="hero-card rounded-2xl p-4 flex items-center gap-3"
+              style={{ background: s.bg, border: `1px solid ${s.bo}`, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: '#ffffff', border: `1px solid ${s.bo}` }}>
+                <s.icon className="w-5 h-5" style={{ color: s.color }} />
+              </div>
+              <div>
+                <p className="font-sora font-bold text-2xl leading-none" style={{ color: '#1e293b' }}>{s.value}</p>
+                <p className="font-inter text-xs mt-0.5" style={{ color: '#64748b' }}>{s.label}</p>
+                <p className="font-mono text-[10px] mt-0.5" style={{ color: s.color }}>{s.sub}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Main content grid ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+          {/* ── Deliveries (spans 2 cols) ── */}
+          <div className="hero-card lg:col-span-2 rounded-2xl"
+            style={{ background: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid #f1f5f9' }}>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: '#f0f9ff', border: '1px solid #bae6fd' }}>
+                  <Truck className="w-4 h-4" style={{ color: '#0ea5e9' }} />
+                </div>
+                <div>
+                  <h2 className="font-sora font-semibold text-sm" style={{ color: '#1e293b' }}>Recent Deliveries</h2>
+                  <p className="font-mono text-[10px]" style={{ color: '#94a3b8' }}>What has been sent and where</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                <TrendingUp className="w-3 h-3" style={{ color: '#10b981' }} />
+                <span className="font-mono text-[10px]" style={{ color: '#10b981' }}>+12% this week</span>
+              </div>
+            </div>
+            <div className="divide-y" style={{ borderColor: '#f8fafc' }}>
+              {recentDeliveries.map((d, i) => (
+                <div key={i} className="px-5 py-3 flex items-start gap-3 hover:bg-slate-50 transition-all">
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+                    style={{ background: d.status === 'delivered' ? '#f0fdf4' : '#fffbeb', border: `1px solid ${d.status === 'delivered' ? '#bbf7d0' : '#fde68a'}` }}>
+                    {d.status === 'delivered'
+                      ? <CheckCircle2 className="w-3.5 h-3.5" style={{ color: '#10b981' }} />
+                      : <Clock className="w-3.5 h-3.5" style={{ color: '#f59e0b' }} />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-sora font-semibold text-xs tracking-wide-custom uppercase" style={{ color: card.color }}>
-                      {card.label}
-                    </p>
-                    <p className="font-inter text-xs mt-0.5 truncate" style={{ color: '#64748b' }}>{card.desc}</p>
-                    <div className="mt-2">
-                      <span className="font-mono text-[10px]" style={{ color: '#94a3b8' }}>{card.progress}%</span>
-                      <div className="progress-bar h-1 mt-1">
-                        <div className="progress-bar-fill" style={{ width: `${card.progress}%` }} />
-                      </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-[10px] font-semibold" style={{ color: '#0ea5e9' }}>{d.ref}</span>
+                      <span className="font-sora text-xs font-semibold truncate" style={{ color: '#1e293b' }}>{d.client}</span>
+                    </div>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <MapPin className="w-2.5 h-2.5 flex-shrink-0" style={{ color: '#cbd5e1' }} />
+                      <p className="font-inter text-[10px] truncate" style={{ color: '#64748b' }}>{d.address}</p>
+                    </div>
+                    <p className="font-inter text-[10px] mt-0.5 truncate" style={{ color: '#94a3b8' }}>{d.items}</p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="font-mono text-[10px]" style={{ color: '#94a3b8' }}>{d.date}</p>
+                    <div className="mt-1 flex items-center gap-1 justify-end">
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ background: d.status === 'delivered' ? '#10b981' : '#f59e0b' }} />
+                      <span className="font-mono text-[9px] capitalize" style={{ color: d.status === 'delivered' ? '#10b981' : '#f59e0b' }}>{d.status}</span>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Center: System Overview ── */}
-        <div className="col-span-6 flex flex-col gap-3 min-h-0">
-
-          {/* Hub Status Header */}
-          <div className="glass-card p-4 flex items-center justify-between flex-shrink-0">
-            <div>
-              <h2 className="font-sora font-bold text-xl tracking-tight" style={{ color: '#1e293b' }}>Grove Bedding</h2>
-              <p className="font-inter text-[10px] mt-0.5 uppercase tracking-widest" style={{ color: '#94a3b8' }}>
-                Logistics Operations Hub
-              </p>
-            </div>
-            <div
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl"
-              style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}
-            >
-              <div className="w-2 h-2 rounded-full bg-emerald animate-pulse" />
-              <span className="font-mono text-xs text-emerald">All Systems Operational</span>
+              ))}
             </div>
           </div>
 
-          {/* Orders Today + Active Syncs — full width stacked */}
-          <div className="flex flex-col gap-3 flex-1 min-h-0">
+          {/* ── Right column ── */}
+          <div className="flex flex-col gap-5">
 
-              {/* Orders Today — expanded with list */}
-              <div className="glass-card p-4 flex-1 flex flex-col min-h-0">
-                <div className="flex items-center justify-between mb-3 flex-shrink-0">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: '#fce7f3' }}>
-                      <ShoppingBag className="w-3.5 h-3.5" style={{ color: '#db2777' }} />
-                    </div>
-                    <p className="font-mono text-[10px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>Orders Today</p>
-                  </div>
-                  <span className="font-sora font-bold text-2xl" style={{ color: '#1e293b' }}>47</span>
+            {/* PDF Router stats */}
+            <div className="hero-card rounded-2xl"
+              style={{ background: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <div className="p-4 flex items-center gap-3" style={{ borderBottom: '1px solid #f1f5f9' }}>
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: '#faf5ff', border: '1px solid #e9d5ff' }}>
+                  <FileText className="w-4 h-4" style={{ color: '#8b5cf6' }} />
                 </div>
-                <div className="flex-1 overflow-y-auto space-y-0 pr-1 min-h-0">
-                  {ordersToday.map((order, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between py-1.5"
-                      style={{ borderBottom: idx < ordersToday.length - 1 ? '1px solid #f1f5f9' : 'none' }}
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-mono text-[10px] flex-shrink-0" style={{ color: '#0ea5e9' }}>{order.ref}</span>
-                        <span className="font-inter text-xs truncate" style={{ color: '#334155' }}>{order.client}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
-                        <span className="font-mono text-[10px]" style={{ color: '#94a3b8' }}>{order.time}</span>
-                        <CheckCircle2 className="w-3 h-3" style={{ color: '#22c55e' }} />
-                      </div>
-                    </div>
-                  ))}
+                <div>
+                  <h3 className="font-sora font-semibold text-sm" style={{ color: '#1e293b' }}>PDF Processing</h3>
+                  <p className="font-mono text-[10px]" style={{ color: '#94a3b8' }}>Pages processed & filed</p>
                 </div>
               </div>
-
-              {/* Active Syncs — expanded with list */}
-              <div className="glass-card p-4 flex-1 flex flex-col min-h-0">
-                <div className="flex items-center justify-between mb-3 flex-shrink-0">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: '#ecfdf5' }}>
-                      <Database className="w-3.5 h-3.5" style={{ color: '#22c55e' }} />
-                    </div>
-                    <p className="font-mono text-[10px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>Active Syncs</p>
+              <div className="grid grid-cols-2 gap-3 p-4">
+                {pdfStats.map(s => (
+                  <div key={s.label} className="p-3 rounded-xl" style={{ background: '#f8fafc', border: '1px solid #f1f5f9' }}>
+                    <p className="font-sora font-bold text-xl" style={{ color: s.color }}>{s.value}</p>
+                    <p className="font-inter text-[10px] mt-0.5" style={{ color: '#94a3b8' }}>{s.label}</p>
                   </div>
-                  <span className="font-sora font-bold text-2xl" style={{ color: '#1e293b' }}>8</span>
+                ))}
+              </div>
+            </div>
+
+            {/* Label printing stats */}
+            <div className="hero-card rounded-2xl"
+              style={{ background: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <div className="p-4 flex items-center gap-3" style={{ borderBottom: '1px solid #f1f5f9' }}>
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                  <Printer className="w-4 h-4" style={{ color: '#10b981' }} />
                 </div>
-                <div className="flex-1 overflow-y-auto space-y-0 pr-1 min-h-0">
-                  {activeSyncs.map((sync, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between py-1.5"
-                      style={{ borderBottom: idx < activeSyncs.length - 1 ? '1px solid #f1f5f9' : 'none' }}
-                    >
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="font-inter text-xs font-medium" style={{ color: '#334155' }}>{sync.from}</span>
-                        <span className="font-mono text-[10px]" style={{ color: '#cbd5e1' }}>→</span>
-                        <span className="font-inter text-xs" style={{ color: '#64748b' }}>{sync.to}</span>
-                      </div>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald" />
-                        <span className="font-mono text-[10px] text-emerald">Active</span>
-                      </div>
-                    </div>
-                  ))}
+                <div>
+                  <h3 className="font-sora font-semibold text-sm" style={{ color: '#1e293b' }}>Label Printing</h3>
+                  <p className="font-mono text-[10px]" style={{ color: '#94a3b8' }}>DYMO 5XL activity</p>
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-3 p-4">
+                {labelStats.map(s => (
+                  <div key={s.label} className="p-3 rounded-xl" style={{ background: '#f8fafc', border: '1px solid #f1f5f9' }}>
+                    <p className="font-sora font-bold text-xl" style={{ color: s.color }}>{s.value}</p>
+                    <p className="font-inter text-[10px] mt-0.5" style={{ color: '#94a3b8' }}>{s.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Recent calls */}
+            <div className="hero-card rounded-2xl"
+              style={{ background: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <div className="p-4 flex items-center gap-3" style={{ borderBottom: '1px solid #f1f5f9' }}>
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: '#fffbeb', border: '1px solid #fde68a' }}>
+                  <PhoneCall className="w-4 h-4" style={{ color: '#f59e0b' }} />
+                </div>
+                <div>
+                  <h3 className="font-sora font-semibold text-sm" style={{ color: '#1e293b' }}>Recent Calls</h3>
+                  <p className="font-mono text-[10px]" style={{ color: '#94a3b8' }}>Outbound agent activity</p>
+                </div>
+              </div>
+              <div className="divide-y p-0" style={{ borderColor: '#f8fafc' }}>
+                {recentCalls.map((c, i) => (
+                  <div key={i} className="px-4 py-2.5 flex items-center gap-3">
+                    <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{
+                      background: c.status === 'completed' ? '#10b981' : c.status === 'failed' ? '#ef4444' : '#f59e0b'
+                    }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-sora text-xs font-semibold truncate" style={{ color: '#1e293b' }}>{c.client}</p>
+                      <p className="font-inter text-[10px] truncate" style={{ color: '#94a3b8' }}>{c.outcome}</p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="font-mono text-[10px]" style={{ color: '#94a3b8' }}>{c.time}</p>
+                      <p className="font-mono text-[9px]" style={{ color: '#cbd5e1' }}>{c.date}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
 
           </div>
         </div>
 
-        {/* ── Right Panel: Active Workflow ── */}
-        <div className="col-span-3 flex flex-col gap-3 min-h-0 overflow-y-auto">
-          <h3 className="font-sora font-semibold text-sm tracking-wide-custom uppercase flex-shrink-0" style={{ color: '#64748b' }}>
-            Active Workflow
-          </h3>
-
-          {/* Order Details */}
-          <div className="glass-card p-4 flex-shrink-0">
-            <div className="space-y-2.5">
-              <div>
-                <p className="font-mono text-[10px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>Order</p>
-                <p className="font-sora font-semibold text-lg" style={{ color: '#1e293b' }}>SO-1020</p>
-              </div>
-              <div>
-                <p className="font-mono text-[10px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>Category</p>
-                <p className="font-inter text-sm" style={{ color: '#64748b' }}>Bedding & Mattress</p>
-              </div>
-              <div>
-                <p className="font-mono text-[10px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>Source</p>
-                <p className="font-inter text-sm" style={{ color: '#3b82f6' }}>OneDrive PDF Upload</p>
+        {/* ── System health row ── */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-5">
+          {[
+            { label: 'OneDrive Sync',     status: 'ok',      detail: 'Watching Scans folder' },
+            { label: 'Make.com Webhook',  status: 'ok',      detail: 'Receiving page data' },
+            { label: 'Google Drive',      status: 'ok',      detail: 'Filing processed PDFs' },
+            { label: 'DYMO Bridge',       status: 'warning', detail: 'Check office PC connection' },
+          ].map(s => (
+            <div key={s.label} className="hero-card rounded-xl p-3 flex items-center gap-2.5"
+              style={{ background: '#ffffff', border: `1px solid ${s.status === 'ok' ? '#e2e8f0' : '#fde68a'}` }}>
+              {s.status === 'ok'
+                ? <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: '#10b981' }} />
+                : <AlertCircle className="w-4 h-4 flex-shrink-0" style={{ color: '#f59e0b' }} />}
+              <div className="min-w-0">
+                <p className="font-sora text-xs font-semibold truncate" style={{ color: '#1e293b' }}>{s.label}</p>
+                <p className="font-inter text-[10px] truncate" style={{ color: '#94a3b8' }}>{s.detail}</p>
               </div>
             </div>
-          </div>
-
-          {/* Workflow Processing Chain */}
-          <div className="glass-card p-4 flex-shrink-0">
-            <p className="font-mono text-[10px] uppercase tracking-wide mb-4" style={{ color: '#94a3b8' }}>Processing Chain</p>
-            <div className="flex items-center justify-between">
-              {workflowSteps.map((step, index) => (
-                <div key={index} className="flex items-center">
-                  <div
-                    className="workflow-module"
-                    style={{
-                      borderColor: step.color,
-                      boxShadow: `0 0 10px ${step.color}30`,
-                    }}
-                    title={step.label}
-                  >
-                    <step.icon className="w-5 h-5" style={{ color: step.color }} />
-                  </div>
-                  {index < workflowSteps.length - 1 && (
-                    <div
-                      className="w-4 h-px mx-1"
-                      style={{
-                        background: `linear-gradient(90deg, ${workflowSteps[index].color}60, ${workflowSteps[index + 1].color}40)`,
-                      }}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-            <div className="flex justify-between mt-2 px-1">
-              {workflowSteps.map((step, index) => (
-                <span key={index} className="font-mono text-[8px] w-12 text-center truncate" style={{ color: '#94a3b8' }}>
-                  {step.label.split(' ')[0]}
-                </span>
-              ))}
-            </div>
-
-            {/* Error notice — removed from here, now in global popup */}
-            <div
-              className="mt-4 p-3 rounded-xl flex items-start gap-2"
-              style={{ background: '#fef2f2', border: '1px solid #fecaca' }}
-            >
-              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#ef4444' }} />
-              <div>
-                <p className="font-sora font-semibold text-xs" style={{ color: '#dc2626' }}>Printer Offline</p>
-                <p className="font-inter text-[10px] mt-0.5" style={{ color: '#64748b' }}>Communication Error</p>
-              </div>
-            </div>
-            <button className="mt-3 w-full btn-outline text-xs py-2 flex items-center justify-center gap-2">
-              <RefreshCw className="w-3 h-3" />
-              Retry Automation
-            </button>
-          </div>
+          ))}
         </div>
 
       </div>
