@@ -51,7 +51,6 @@ interface StatusRecord {
 
 interface WaitingFile {
   fileId: string;
-  fileName: string;
   totalPages?: number;
 }
 
@@ -84,7 +83,6 @@ interface AutoStep {
 
 interface HistoryRun {
   id: string;
-  fileName: string;
   date: string;
   time: string;
   status: 'success' | 'failed' | 'running';
@@ -140,7 +138,6 @@ async function api(url: string, opts?: RequestInit) {
 function AutomationVisualiser({ steps, isRunning }: {
   steps: AutoStep[];
   isRunning: boolean;
-  fileName: string;
 }) {
   const allDone   = steps.every(s => s.status === 'done');
   const hasError  = steps.some(s => s.status === 'error');

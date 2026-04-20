@@ -3,7 +3,7 @@ import { gsap } from 'gsap';
 import {
   FileText, Printer, Truck, PhoneCall,
   CheckCircle2, AlertCircle, Clock,
-  TrendingUp, Package, MapPin,
+  TrendingUp, MapPin,
 } from 'lucide-react';
 
 // ── Mock activity data — will be replaced with real API calls ──────────────────

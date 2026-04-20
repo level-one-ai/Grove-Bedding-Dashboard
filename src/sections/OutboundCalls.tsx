@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import {
   PhoneCall, PhoneOff, PhoneMissed,
-  Clock, User, Hash, Calendar,
+  User, Hash, Calendar,
   Timer, ShoppingBag, MessageSquare,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import {
-  Zap, CheckCircle2, XCircle, RefreshCw,
-  ChevronRight, AlertTriangle, Clock,
+
+  ChevronRight, Clock,
   Webhook, Brain, Printer, Truck, FileText, Tag,
   PhoneCall, type LucideIcon,
 } from 'lucide-react';
