@@ -103,6 +103,19 @@ export default function StockManagement({ setActivePage }: Props) {
   const [automationSteps, setAutomationSteps] = useState<AutoStep[]>(buildIdleSteps());
   const [automationRunning, setAutomationRunning] = useState(false);
   const [automationResult, setAutomationResult] = useState<string | null>(null);
+  const [orderType, setOrderType]           = useState<'standard' | 'nextday' | 'homedelivery'>('standard');
+  const [orderQty, setOrderQty]             = useState<number>(0);
+  const [orderName, setOrderName]           = useState('');
+  const [orderAddr1, setOrderAddr1]         = useState('');
+  const [orderAddr2, setOrderAddr2]         = useState('');
+  const [orderTown, setOrderTown]           = useState('');
+  const [orderRegion, setOrderRegion]       = useState('');
+  const [orderPostcode, setOrderPostcode]   = useState('');
+  const [orderPhone, setOrderPhone]         = useState('');
+  const [orderEmail, setOrderEmail]         = useState('');
+  const [orderRef, setOrderRef]             = useState('');
+  const [orderError, setOrderError]         = useState<string | null>(null);
+  const [orderSending, setOrderSending]     = useState(false);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -114,10 +127,76 @@ export default function StockManagement({ setActivePage }: Props) {
   const pct = (c: number, m: number) => Math.round((c / m) * 100);
   const status = (c: number, r: number) => c <= r ? 'critical' : c <= r * 1.5 ? 'warning' : 'good';
 
-  const handleOrderClick = (item: StockItem) => { setSelectedItem(item); setOrderDialogOpen(true); };
+  const handleOrderClick = (item: StockItem) => {
+    setSelectedItem(item);
+    setOrderQty(item.max - item.current);
+    setOrderRef('BIR-' + Date.now().toString().slice(-6));
+    setOrderError(null);
+    setOrderDialogOpen(true);
+  };
 
   const handleConfirmOrder = async () => {
+    if (!selectedItem) return;
+    if (!orderName.trim()) { setOrderError('Please enter a delivery name.'); return; }
+    if (!orderAddr1.trim()) { setOrderError('Please enter address line 1.'); return; }
+    if (!orderTown.trim()) { setOrderError('Please enter a town.'); return; }
+    if (!orderPostcode.trim()) { setOrderError('Please enter a postcode.'); return; }
+    if (!orderEmail.trim()) { setOrderError('Please enter an email address.'); return; }
+
+    setOrderError(null);
+    setOrderSending(true);
+
+    const deliveryEmail = orderType === 'standard' ? 'orders@birlea.com'
+      : orderType === 'nextday' ? 'nextday@birlea.com'
+      : 'homedelivery@birlea.com';
+
+    const orderTypeLabel = orderType === 'standard' ? 'Standard'
+      : orderType === 'nextday' ? 'Next Day'
+      : 'Home Delivery';
+
+    const payload = {
+      // Birlea CSV fields
+      birleaCustomerNumber: 'C001768',
+      orderType: orderTypeLabel,
+      orderNumber: orderRef,
+      name: orderName,
+      address1: orderAddr1,
+      address2: orderAddr2,
+      town: orderTown,
+      region: orderRegion,
+      postcode: orderPostcode,
+      deliveryCode: 'WAREHOUSE',
+      buyerPhone: orderPhone,
+      email: orderEmail,
+      item: selectedItem.id,
+      itemName: selectedItem.name,
+      quantity: orderQty,
+      // Routing
+      deliveryEmail,
+      ccEmail: 'salesorderauotmation@birlea.com',
+      // Meta
+      supplier: 'Birlea',
+      submittedAt: new Date().toISOString(),
+    };
+
+    try {
+      const resp = await fetch('https://hook.eu1.make.com/38eqdsczy25d5wo864vibvuv46uigyvi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!resp.ok) throw new Error('Webhook returned ' + resp.status);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      setOrderError('Failed to send order: ' + msg);
+      setOrderSending(false);
+      return;
+    }
+
+    setOrderSending(false);
     setOrderDialogOpen(false);
+
+    // Animate the pipeline
     setAutomationRunning(true);
     setAutomationResult(null);
     setAutomationSteps(buildIdleSteps());
@@ -130,15 +209,15 @@ export default function StockManagement({ setActivePage }: Props) {
         return step;
       }));
     };
-    upd(1, 'running'); await delay(700);
-    upd(2, 'running'); await delay(900);
-    upd(3, 'running'); await delay(1100);
-    upd(4, 'running'); await delay(900);
-    upd(5, 'running'); await delay(600);
+    upd(1, 'running'); await delay(600);
+    upd(2, 'running'); await delay(800);
+    upd(3, 'running'); await delay(900);
+    upd(4, 'running'); await delay(700);
+    upd(5, 'running'); await delay(500);
     const ts = ftimeNow();
     setAutomationSteps(prev => prev.map(s => ({ ...s, status: 'done', timestamp: ts })));
     setAutomationRunning(false);
-    setAutomationResult(`Order placed for ${selectedItem?.name} with Birlea`);
+    setAutomationResult(`${orderTypeLabel} order #${orderRef} sent to ${deliveryEmail}`);
   };
 
   const totalUnits = stockItems.reduce((sum, i) => sum + i.current, 0);
@@ -262,40 +341,114 @@ export default function StockManagement({ setActivePage }: Props) {
 
       {/* Dialog */}
       <Dialog open={orderDialogOpen} onOpenChange={setOrderDialogOpen}>
-        <DialogContent className="max-w-md" style={{ background: '#ffffff', border: '1px solid #e2e8f0' }}>
+        <DialogContent className="max-w-lg" style={{ background: '#ffffff', border: '1px solid #e2e8f0', maxHeight: '90vh', overflowY: 'auto' }}>
           <DialogHeader>
             <DialogTitle className="font-sora font-bold text-xl" style={{ color: '#1e293b' }}>Place Birlea Order</DialogTitle>
-            <DialogDescription className="font-inter text-sm" style={{ color: '#64748b' }}>This will trigger the automated ordering pipeline</DialogDescription>
+            <DialogDescription className="font-inter text-sm" style={{ color: '#64748b' }}>
+              Complete the form — we'll build the CSV and email Birlea automatically via Make.com
+            </DialogDescription>
           </DialogHeader>
+
           {selectedItem && (
             <div className="space-y-4 mt-2">
-              <div className="rounded-xl p-4" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                <p className="font-mono text-[10px] uppercase tracking-wide mb-1" style={{ color: '#94a3b8' }}>Product</p>
-                <p className="font-sora font-semibold" style={{ color: '#1e293b' }}>{selectedItem.name}</p>
-                <p className="font-mono text-xs mt-1" style={{ color: '#0ea5e9' }}>{selectedItem.id}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+
+              {/* Product summary */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="col-span-2 rounded-xl p-3" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                  <p className="font-mono text-[9px] uppercase tracking-wide mb-0.5" style={{ color: '#94a3b8' }}>Product</p>
+                  <p className="font-sora font-semibold text-sm" style={{ color: '#1e293b' }}>{selectedItem.name}</p>
+                  <p className="font-mono text-xs" style={{ color: '#0ea5e9' }}>{selectedItem.id}</p>
+                </div>
                 <div className="rounded-xl p-3" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                  <p className="font-mono text-[10px] uppercase tracking-wide mb-1" style={{ color: '#94a3b8' }}>Current Stock</p>
-                  <p className="font-sora font-bold text-lg" style={{ color: '#1e293b' }}>{selectedItem.current}</p>
-                </div>
-                <div className="rounded-xl p-3" style={{ background: '#fef2f2', border: '1px solid #fecaca' }}>
-                  <p className="font-mono text-[10px] uppercase tracking-wide mb-1" style={{ color: '#94a3b8' }}>Reorder At</p>
-                  <p className="font-sora font-bold text-lg" style={{ color: '#dc2626' }}>{selectedItem.reorderAt}</p>
+                  <p className="font-mono text-[9px] uppercase tracking-wide mb-0.5" style={{ color: '#94a3b8' }}>Stock</p>
+                  <p className="font-sora font-bold" style={{ color: '#1e293b' }}>{selectedItem.current}<span className="text-slate-300">/{selectedItem.max}</span></p>
+                  <p className="font-mono text-[9px]" style={{ color: '#ef4444' }}>Reorder at {selectedItem.reorderAt}</p>
                 </div>
               </div>
-              <div className="rounded-xl p-4" style={{ background: '#f0f9ff', border: '1px solid #bae6fd' }}>
-                <p className="font-mono text-[10px] uppercase tracking-wide mb-1" style={{ color: '#94a3b8' }}>Supplier</p>
-                <p className="font-inter text-sm font-semibold" style={{ color: '#0369a1' }}>{selectedItem.supplier}</p>
-                <p className="font-inter text-[10px] mt-0.5" style={{ color: '#7dd3fc' }}>Order will be sent automatically via Make.com</p>
-              </div>
+
+              {/* Order type */}
               <div>
-                <label className="font-mono text-[10px] uppercase tracking-wide mb-2 block" style={{ color: '#64748b' }}>Order Quantity</label>
-                <input type="number" defaultValue={selectedItem.max - selectedItem.current} className="w-full px-4 py-2.5 rounded-xl" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
+                <p className="font-mono text-[10px] uppercase tracking-wide mb-2" style={{ color: '#64748b' }}>Delivery Type</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { val: 'standard',     label: 'Standard',     sub: 'orders@birlea.com',          col: '#0ea5e9', bg: '#f0f9ff', br: '#bae6fd' },
+                    { val: 'nextday',      label: 'Next Day',     sub: 'nextday@birlea.com',         col: '#8b5cf6', bg: '#faf5ff', br: '#ddd6fe' },
+                    { val: 'homedelivery', label: 'Home Delivery', sub: 'homedelivery@birlea.com',   col: '#f59e0b', bg: '#fffbeb', br: '#fde68a' },
+                  ] as { val: 'standard'|'nextday'|'homedelivery'; label: string; sub: string; col: string; bg: string; br: string }[]).map(t => (
+                    <button key={t.val} onClick={() => setOrderType(t.val)}
+                      className="rounded-xl p-2.5 text-left transition-all"
+                      style={{
+                        background: orderType === t.val ? t.bg : '#f8fafc',
+                        border: `1.5px solid ${orderType === t.val ? t.col : '#e2e8f0'}`,
+                        boxShadow: orderType === t.val ? `0 0 0 2px ${t.br}` : 'none',
+                      }}>
+                      <p className="font-sora font-semibold text-xs" style={{ color: orderType === t.val ? t.col : '#1e293b' }}>{t.label}</p>
+                      <p className="font-mono text-[8px] mt-0.5" style={{ color: '#94a3b8' }}>{t.sub}</p>
+                    </button>
+                  ))}
+                </div>
               </div>
-              <button onClick={handleConfirmOrder} className="w-full py-2.5 rounded-xl font-sora font-semibold text-sm flex items-center justify-center gap-2 transition-all" style={{ background: '#0ea5e9', color: '#ffffff', boxShadow: '0 4px 14px rgba(14,165,233,0.35)' }}>
-                <ShoppingCart className="w-4 h-4" /> Confirm &amp; Send to Birlea
+
+              {/* Order ref + quantity */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-mono text-[9px] uppercase tracking-wide mb-1 block" style={{ color: '#64748b' }}>Order Reference</label>
+                  <input value={orderRef} onChange={e => setOrderRef(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm font-mono" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
+                </div>
+                <div>
+                  <label className="font-mono text-[9px] uppercase tracking-wide mb-1 block" style={{ color: '#64748b' }}>Quantity</label>
+                  <input type="number" value={orderQty} onChange={e => setOrderQty(Number(e.target.value))} className="w-full px-3 py-2 rounded-lg text-sm font-mono" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
+                </div>
+              </div>
+
+              {/* Delivery details */}
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-wide mb-2" style={{ color: '#64748b' }}>Delivery Details</p>
+                <div className="space-y-2">
+                  <input placeholder="Full Name *" value={orderName} onChange={e => setOrderName(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
+                  <input placeholder="Address Line 1 *" value={orderAddr1} onChange={e => setOrderAddr1(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
+                  <input placeholder="Address Line 2" value={orderAddr2} onChange={e => setOrderAddr2(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input placeholder="Town *" value={orderTown} onChange={e => setOrderTown(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
+                    <input placeholder="Region / County" value={orderRegion} onChange={e => setOrderRegion(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input placeholder="Postcode *" value={orderPostcode} onChange={e => setOrderPostcode(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
+                    <input placeholder="Phone Number" value={orderPhone} onChange={e => setOrderPhone(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
+                  </div>
+                  <input placeholder="Your email address *" value={orderEmail} onChange={e => setOrderEmail(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
+                </div>
+              </div>
+
+              {/* CC notice */}
+              <div className="rounded-xl px-3 py-2 flex items-start gap-2" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                <span className="text-emerald-500 mt-0.5 text-xs">✓</span>
+                <p className="font-inter text-[10px]" style={{ color: '#15803d' }}>
+                  Order CSV will be emailed to <strong>{orderType === 'standard' ? 'orders@birlea.com' : orderType === 'nextday' ? 'nextday@birlea.com' : 'homedelivery@birlea.com'}</strong> and CC'd to <strong>salesorderauotmation@birlea.com</strong>
+                </p>
+              </div>
+
+              {/* Error */}
+              {orderError && (
+                <div className="rounded-xl px-3 py-2 flex items-center gap-2" style={{ background: '#fef2f2', border: '1px solid #fecaca' }}>
+                  <span className="text-red-500 text-xs">✗</span>
+                  <p className="font-inter text-xs" style={{ color: '#dc2626' }}>{orderError}</p>
+                </div>
+              )}
+
+              {/* Submit */}
+              <button onClick={handleConfirmOrder} disabled={orderSending}
+                className="w-full py-2.5 rounded-xl font-sora font-semibold text-sm flex items-center justify-center gap-2 transition-all"
+                style={{
+                  background: orderSending ? '#94a3b8' : '#0ea5e9',
+                  color: '#ffffff',
+                  boxShadow: orderSending ? 'none' : '0 4px 14px rgba(14,165,233,0.35)',
+                  cursor: orderSending ? 'not-allowed' : 'pointer',
+                }}>
+                <ShoppingCart className="w-4 h-4" />
+                {orderSending ? 'Sending to Make.com…' : 'Confirm & Send to Birlea'}
               </button>
+
             </div>
           )}
         </DialogContent>
