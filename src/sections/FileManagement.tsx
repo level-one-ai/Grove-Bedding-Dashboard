@@ -211,16 +211,16 @@ function AutomationVisualiser({ steps, isRunning }: { steps: AutoStep[]; isRunni
 
           return (
             <div key={step.id} className="flex items-center flex-shrink-0">
-              <div className="flex flex-col items-center" style={{ width: '70px' }}>
-                <div className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-500 relative"
-                  style={{ border: `1.5px solid ${c.border}`, background: c.bg, boxShadow: c.shadow }}>
-                  <span className="text-sm select-none transition-all duration-500"
+              <div className="flex flex-col items-center" style={{ width: '80px' }}>
+                <div className="w-11 h-11 rounded-full flex items-center justify-center transition-all duration-500 relative"
+                  style={{ border: `2.5px solid ${c.border}`, background: c.bg, boxShadow: c.shadow }}>
+                  <span className="text-base select-none transition-all duration-500"
                     style={{ filter: step.status === 'idle' ? 'grayscale(1) opacity(0.35)' : 'none' }}>
                     {step.icon}
                   </span>
                   {step.status === 'running' && (
                     <div className="absolute inset-0 rounded-full animate-spin"
-                      style={{ border: '1.5px solid transparent', borderTopColor: '#0ea5e9', margin: '-3px' }} />
+                      style={{ border: '2px solid transparent', borderTopColor: '#0ea5e9', margin: '-4px' }} />
                   )}
                 </div>
                 <p className="font-sora font-semibold text-[10px] mt-1.5 text-center transition-colors duration-500"
@@ -972,7 +972,7 @@ export default function FileManagement() {
         </div>
 
         {/* ── Pipeline Visualiser ── */}
-        <div className="mt-4 flex-shrink-0 bg-white border border-slate-200 rounded-2xl shadow-sm p-4">
+        <div className="mt-3 flex-shrink-0 bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-2">
           <AutomationVisualiser steps={pipelineSteps} isRunning={isRunning} />
 
           {runResult && !isRunning && (
