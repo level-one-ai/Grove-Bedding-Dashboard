@@ -14,7 +14,7 @@
  *  - Pipeline visualiser (circles + arrows)
  */
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   FileText, RefreshCw, CheckCircle2, Upload,
   Play, CloudUpload, Inbox,
@@ -307,7 +307,6 @@ export default function FileManagement() {
   const [gdRows, setGdRows]               = useState<{ id: string; name: string; detail: string; status: string; linkUrl?: string }[]>([]);
   const [gdRunning, setGdRunning]         = useState(false);
   const [expandedProc, setExpandedProc]   = useState<number | null>(null);
-  const [statusLoaded, setStatusLoaded]   = useState(false);
 
   const autoProcessing = useRef(false);
   const autoKnownIds   = useRef<Record<string, boolean> | null>(null);
@@ -336,7 +335,6 @@ export default function FileManagement() {
     const d = await api('/api/status?limit=200');
     const records: StatusRecord[] = d?.records ?? [];
     setStatusCache(records);
-    setStatusLoaded(true);
     // Load history from completed records
     loadHistoryFromCache(records);
     return records;
