@@ -204,9 +204,12 @@ export default function StockManagement({ setActivePage }: Props) {
     const deliveryEmail  = ORDER_TYPE_EMAILS[orderType];
 
     // Build the exact CSV rows matching Birlea's template
-    const csvRow = {
+    // Build the payload — items sent as an array so Make.com can
+    // iterate through them and build one CSV row per item
+    const payload = {
+      // Order header fields (same for all rows)
       birleaCustomerNumber: 'C001768',
-      orderType:    orderTypeLabel,   // e.g. "Standard", "Next Day", "Home Delivery", "Customer Collection"
+      orderType:    orderTypeLabel,
       orderNumber:  orderRef,
       name:         orderName,
       address1:     orderAddr1,
@@ -217,21 +220,20 @@ export default function StockManagement({ setActivePage }: Props) {
       deliveryCode: 'WAREHOUSE',
       buyerPhone:   orderPhone,
       email:        orderEmail,
-      item:         selectedItem.birleaCode, // Birlea's own product code, not internal SKU
-      quantity:     orderQty,
-    };
-
-    const csvContent = buildCsvContent(csvRow);
-
-    // Send everything to Make.com — the CSV string is included
-    // so Make.com just needs to attach it directly without rebuilding it
-    const payload = {
-      ...csvRow,
-      csvContent,            // ready-to-attach CSV file content
-      csvFileName: `${orderRef}.csv`,
-      deliveryEmail,         // which Birlea inbox to send to
+      // Items array — one entry per product line
+      // Make.com Iterator will split this into one bundle per row
+      items: [
+        {
+          item:     selectedItem.birleaCode,
+          itemName: selectedItem.name,
+          quantity: orderQty,
+        }
+        // Additional items would be added here in a future multi-item version
+      ],
+      // Routing
+      deliveryEmail,
       ccEmail: 'salesorderauotmation@birlea.com',
-      itemName: selectedItem.name,
+      csvFileName: `${orderRef}.csv`,
       submittedAt: new Date().toISOString(),
     };
 
@@ -502,22 +504,7 @@ export default function StockManagement({ setActivePage }: Props) {
                   <p className="font-mono text-[9px] uppercase tracking-wide mb-1" style={{ color: '#94a3b8' }}>CSV Preview — this is what Birlea will receive</p>
                   <pre className="w-full rounded-lg px-3 py-2 font-mono text-[9px] overflow-x-auto whitespace-pre"
                     style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', lineHeight: 1.8 }}>
-                    {buildCsvContent({
-                      birleaCustomerNumber: 'C001768',
-                      orderType:    ORDER_TYPE_LABELS[orderType],
-                      orderNumber:  orderRef,
-                      name:         orderName,
-                      address1:     orderAddr1,
-                      address2:     orderAddr2,
-                      town:         orderTown,
-                      region:       orderRegion,
-                      postcode:     orderPostcode,
-                      deliveryCode: 'WAREHOUSE',
-                      buyerPhone:   orderPhone,
-                      email:        orderEmail,
-                      item:         selectedItem.birleaCode,
-                      quantity:     orderQty,
-                    })}
+                    {`Birlea Customer Number ,Order Type ,order number,NAME,Address1,Address2,Town,Region,cPostCode,(Delivery Code Stores Only),BuyerPhoneNumber,email,Item,Quantity\nC001768,${ORDER_TYPE_LABELS[orderType]},${orderRef},${orderName},${orderAddr1},${orderAddr2},${orderTown},${orderRegion},${orderPostcode},WAREHOUSE,${orderPhone},${orderEmail},${selectedItem.birleaCode},${orderQty}`}
                   </pre>
                 </div>
               )}
