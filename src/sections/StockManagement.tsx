@@ -7,23 +7,25 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import type { PageId } from '../App';
 
+// ── Stock items — id = your internal SKU, birleaCode = Birlea's product code for the CSV ──
 const stockItems = [
-  { id: 'SKU-001', name: 'Memory Foam Mattress',   category: 'Mattresses',  current: 45,  max: 100, reorderAt: 30, supplier: 'Birlea' },
-  { id: 'SKU-002', name: 'Pillow Top Queen',        category: 'Mattresses',  current: 28,  max: 80,  reorderAt: 25, supplier: 'Birlea' },
-  { id: 'SKU-003', name: 'Luxury Bed Sheets',       category: 'Bedding',     current: 156, max: 200, reorderAt: 50, supplier: 'Birlea' },
-  { id: 'SKU-004', name: 'Down Alternative Pillow', category: 'Pillows',     current: 89,  max: 150, reorderAt: 40, supplier: 'Birlea' },
-  { id: 'SKU-005', name: 'Weighted Blanket',        category: 'Bedding',     current: 12,  max: 60,  reorderAt: 20, supplier: 'Birlea' },
-  { id: 'SKU-006', name: 'Mattress Protector',      category: 'Accessories', current: 67,  max: 120, reorderAt: 30, supplier: 'Birlea' },
+  { id: 'SKU-001', birleaCode: 'CASSO46CHA',    name: 'Memory Foam Mattress',   category: 'Mattresses',  current: 45,  max: 100, reorderAt: 30, supplier: 'Birlea' },
+  { id: 'SKU-002', birleaCode: 'SS-46BLISS800', name: 'Pillow Top Queen',        category: 'Mattresses',  current: 28,  max: 80,  reorderAt: 25, supplier: 'Birlea' },
+  { id: 'SKU-003', birleaCode: 'LXSHT-KNG',     name: 'Luxury Bed Sheets',       category: 'Bedding',     current: 156, max: 200, reorderAt: 50, supplier: 'Birlea' },
+  { id: 'SKU-004', birleaCode: 'PIL-DOWNA-D',   name: 'Down Alternative Pillow', category: 'Pillows',     current: 89,  max: 150, reorderAt: 40, supplier: 'Birlea' },
+  { id: 'SKU-005', birleaCode: 'WB-COZY-DBL',   name: 'Weighted Blanket',        category: 'Bedding',     current: 12,  max: 60,  reorderAt: 20, supplier: 'Birlea' },
+  { id: 'SKU-006', birleaCode: 'MPROT-STD',     name: 'Mattress Protector',      category: 'Accessories', current: 67,  max: 120, reorderAt: 30, supplier: 'Birlea' },
 ];
 
 interface StockItem {
-  id: string; name: string; category: string;
+  id: string; birleaCode: string; name: string; category: string;
   current: number; max: number; reorderAt: number; supplier: string;
 }
 
 interface Props { setActivePage: (page: PageId) => void; }
 
 type StepStatus = 'idle' | 'running' | 'done' | 'error';
+type OrderType  = 'standard' | 'nextday' | 'homedelivery' | 'collection';
 
 interface AutoStep {
   id: number; icon: string; label: string; sublabel: string;
@@ -32,11 +34,29 @@ interface AutoStep {
 
 const BIRLEA_STEPS: Omit<AutoStep, 'status' | 'timestamp'>[] = [
   { id: 1, icon: '📦', label: 'Low Stock',  sublabel: 'Alert detected'  },
-  { id: 2, icon: '⚡', label: 'Make.com',   sublabel: 'Trigger webhook' },
-  { id: 3, icon: '🧠', label: 'Claude AI',  sublabel: 'Build order'     },
+  { id: 2, icon: '⚡', label: 'Make.com',   sublabel: 'Build CSV'       },
+  { id: 3, icon: '📎', label: 'Attach CSV', sublabel: 'Format & attach' },
   { id: 4, icon: '📧', label: 'Email',      sublabel: 'Send to Birlea'  },
   { id: 5, icon: '✅', label: 'Confirmed',  sublabel: 'Order placed'    },
 ];
+
+// Exact CSV header from Birlea's template — spaces after some columns are intentional
+const CSV_HEADER = 'Birlea Customer Number ,Order Type ,order number,NAME,Address1,Address2,Town,Region,cPostCode,(Delivery Code Stores Only),BuyerPhoneNumber,email,Item,Quantity';
+
+// Exact Order Type labels that Birlea's ERP expects
+const ORDER_TYPE_LABELS: Record<OrderType, string> = {
+  standard:     'Standard',
+  nextday:      'Next Day',
+  homedelivery: 'Home Delivery',
+  collection:   'Customer Collection',
+};
+
+const ORDER_TYPE_EMAILS: Record<OrderType, string> = {
+  standard:     'orders@birlea.com',
+  nextday:      'nextday@birlea.com',
+  homedelivery: 'homedelivery@birlea.com',
+  collection:   'orders@birlea.com',
+};
 
 function buildIdleSteps(): AutoStep[] {
   return BIRLEA_STEPS.map(s => ({ ...s, status: 'idle', timestamp: '' }));
@@ -46,6 +66,33 @@ function ftimeNow() {
   return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 }
 
+// Build the CSV string exactly matching Birlea's template
+function buildCsvContent(row: {
+  birleaCustomerNumber: string; orderType: string; orderNumber: string;
+  name: string; address1: string; address2: string; town: string;
+  region: string; postcode: string; deliveryCode: string;
+  buyerPhone: string; email: string; item: string; quantity: number;
+}): string {
+  const dataRow = [
+    row.birleaCustomerNumber,
+    row.orderType,
+    row.orderNumber,
+    row.name,
+    row.address1,
+    row.address2,
+    row.town,
+    row.region,
+    row.postcode,
+    row.deliveryCode,
+    row.buyerPhone,
+    row.email,
+    row.item,
+    row.quantity,
+  ].join(',');
+  return CSV_HEADER + '\n' + dataRow + '\n';
+}
+
+// ── Pipeline visualiser ───────────────────────────────────────────────────────
 function BirleaVisualiser({ steps, isRunning }: { steps: AutoStep[]; isRunning: boolean }) {
   const allDone  = steps.every(s => s.status === 'done');
   const hasError = steps.some(s => s.status === 'error');
@@ -96,26 +143,29 @@ function BirleaVisualiser({ steps, isRunning }: { steps: AutoStep[]; isRunning: 
   );
 }
 
+// ── Main component ────────────────────────────────────────────────────────────
 export default function StockManagement({ setActivePage }: Props) {
   const sectionRef = useRef<HTMLDivElement>(null);
-  const [selectedItem, setSelectedItem]   = useState<StockItem | null>(null);
+  const [selectedItem, setSelectedItem]     = useState<StockItem | null>(null);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
   const [automationSteps, setAutomationSteps] = useState<AutoStep[]>(buildIdleSteps());
   const [automationRunning, setAutomationRunning] = useState(false);
-  const [automationResult, setAutomationResult] = useState<string | null>(null);
-  const [orderType, setOrderType]           = useState<'standard' | 'nextday' | 'homedelivery'>('standard');
-  const [orderQty, setOrderQty]             = useState<number>(0);
-  const [orderName, setOrderName]           = useState('');
-  const [orderAddr1, setOrderAddr1]         = useState('');
-  const [orderAddr2, setOrderAddr2]         = useState('');
-  const [orderTown, setOrderTown]           = useState('');
-  const [orderRegion, setOrderRegion]       = useState('');
-  const [orderPostcode, setOrderPostcode]   = useState('');
-  const [orderPhone, setOrderPhone]         = useState('');
-  const [orderEmail, setOrderEmail]         = useState('');
-  const [orderRef, setOrderRef]             = useState('');
-  const [orderError, setOrderError]         = useState<string | null>(null);
-  const [orderSending, setOrderSending]     = useState(false);
+  const [automationResult, setAutomationResult]   = useState<string | null>(null);
+
+  // Order form state
+  const [orderType, setOrderType]         = useState<OrderType>('standard');
+  const [orderQty, setOrderQty]           = useState<number>(0);
+  const [orderName, setOrderName]         = useState('');
+  const [orderAddr1, setOrderAddr1]       = useState('');
+  const [orderAddr2, setOrderAddr2]       = useState('');
+  const [orderTown, setOrderTown]         = useState('');
+  const [orderRegion, setOrderRegion]     = useState('');
+  const [orderPostcode, setOrderPostcode] = useState('');
+  const [orderPhone, setOrderPhone]       = useState('');
+  const [orderEmail, setOrderEmail]       = useState('');
+  const [orderRef, setOrderRef]           = useState('');
+  const [orderError, setOrderError]       = useState<string | null>(null);
+  const [orderSending, setOrderSending]   = useState(false);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -124,58 +174,64 @@ export default function StockManagement({ setActivePage }: Props) {
     return () => ctx.revert();
   }, []);
 
-  const pct = (c: number, m: number) => Math.round((c / m) * 100);
+  const pct    = (c: number, m: number) => Math.round((c / m) * 100);
   const status = (c: number, r: number) => c <= r ? 'critical' : c <= r * 1.5 ? 'warning' : 'good';
 
   const handleOrderClick = (item: StockItem) => {
     setSelectedItem(item);
     setOrderQty(item.max - item.current);
     setOrderRef('BIR-' + Date.now().toString().slice(-6));
+    setOrderType('standard');
     setOrderError(null);
     setOrderDialogOpen(true);
   };
 
   const handleConfirmOrder = async () => {
     if (!selectedItem) return;
-    if (!orderName.trim()) { setOrderError('Please enter a delivery name.'); return; }
-    if (!orderAddr1.trim()) { setOrderError('Please enter address line 1.'); return; }
-    if (!orderTown.trim()) { setOrderError('Please enter a town.'); return; }
+
+    // Validation
+    if (!orderName.trim())     { setOrderError('Please enter a delivery name.'); return; }
+    if (!orderAddr1.trim())    { setOrderError('Please enter address line 1.'); return; }
+    if (!orderTown.trim())     { setOrderError('Please enter a town.'); return; }
     if (!orderPostcode.trim()) { setOrderError('Please enter a postcode.'); return; }
-    if (!orderEmail.trim()) { setOrderError('Please enter an email address.'); return; }
+    if (!orderEmail.trim())    { setOrderError('Please enter an email address.'); return; }
+    if (orderQty < 1)          { setOrderError('Quantity must be at least 1.'); return; }
 
     setOrderError(null);
     setOrderSending(true);
 
-    const deliveryEmail = orderType === 'standard' ? 'orders@birlea.com'
-      : orderType === 'nextday' ? 'nextday@birlea.com'
-      : 'homedelivery@birlea.com';
+    const orderTypeLabel = ORDER_TYPE_LABELS[orderType];
+    const deliveryEmail  = ORDER_TYPE_EMAILS[orderType];
 
-    const orderTypeLabel = orderType === 'standard' ? 'Standard'
-      : orderType === 'nextday' ? 'Next Day'
-      : 'Home Delivery';
-
-    const payload = {
-      // Birlea CSV fields
+    // Build the exact CSV rows matching Birlea's template
+    const csvRow = {
       birleaCustomerNumber: 'C001768',
-      orderType: orderTypeLabel,
-      orderNumber: orderRef,
-      name: orderName,
-      address1: orderAddr1,
-      address2: orderAddr2,
-      town: orderTown,
-      region: orderRegion,
-      postcode: orderPostcode,
+      orderType:    orderTypeLabel,   // e.g. "Standard", "Next Day", "Home Delivery", "Customer Collection"
+      orderNumber:  orderRef,
+      name:         orderName,
+      address1:     orderAddr1,
+      address2:     orderAddr2,
+      town:         orderTown,
+      region:       orderRegion,
+      postcode:     orderPostcode,
       deliveryCode: 'WAREHOUSE',
-      buyerPhone: orderPhone,
-      email: orderEmail,
-      item: selectedItem.id,
-      itemName: selectedItem.name,
-      quantity: orderQty,
-      // Routing
-      deliveryEmail,
+      buyerPhone:   orderPhone,
+      email:        orderEmail,
+      item:         selectedItem.birleaCode, // Birlea's own product code, not internal SKU
+      quantity:     orderQty,
+    };
+
+    const csvContent = buildCsvContent(csvRow);
+
+    // Send everything to Make.com — the CSV string is included
+    // so Make.com just needs to attach it directly without rebuilding it
+    const payload = {
+      ...csvRow,
+      csvContent,            // ready-to-attach CSV file content
+      csvFileName: `${orderRef}.csv`,
+      deliveryEmail,         // which Birlea inbox to send to
       ccEmail: 'salesorderauotmation@birlea.com',
-      // Meta
-      supplier: 'Birlea',
+      itemName: selectedItem.name,
       submittedAt: new Date().toISOString(),
     };
 
@@ -188,7 +244,7 @@ export default function StockManagement({ setActivePage }: Props) {
       if (!resp.ok) throw new Error('Webhook returned ' + resp.status);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
-      setOrderError('Failed to send order: ' + msg);
+      setOrderError('Failed to send: ' + msg);
       setOrderSending(false);
       return;
     }
@@ -196,7 +252,7 @@ export default function StockManagement({ setActivePage }: Props) {
     setOrderSending(false);
     setOrderDialogOpen(false);
 
-    // Animate the pipeline
+    // Animate pipeline
     setAutomationRunning(true);
     setAutomationResult(null);
     setAutomationSteps(buildIdleSteps());
@@ -217,11 +273,18 @@ export default function StockManagement({ setActivePage }: Props) {
     const ts = ftimeNow();
     setAutomationSteps(prev => prev.map(s => ({ ...s, status: 'done', timestamp: ts })));
     setAutomationRunning(false);
-    setAutomationResult(`${orderTypeLabel} order #${orderRef} sent to ${deliveryEmail}`);
+    setAutomationResult(`${orderTypeLabel} order #${orderRef} → ${deliveryEmail}`);
   };
 
   const totalUnits = stockItems.reduce((sum, i) => sum + i.current, 0);
   const lowCount   = stockItems.filter(i => status(i.current, i.reorderAt) !== 'good').length;
+
+  const deliveryTypes: { val: OrderType; label: string; email: string; col: string; bg: string; br: string }[] = [
+    { val: 'standard',     label: 'Standard',            email: 'orders@birlea.com',        col: '#0ea5e9', bg: '#f0f9ff', br: '#bae6fd' },
+    { val: 'nextday',      label: 'Next Day',             email: 'nextday@birlea.com',       col: '#8b5cf6', bg: '#faf5ff', br: '#ddd6fe' },
+    { val: 'homedelivery', label: 'Home Delivery',        email: 'homedelivery@birlea.com',  col: '#f59e0b', bg: '#fffbeb', br: '#fde68a' },
+    { val: 'collection',   label: 'Customer Collection',  email: 'orders@birlea.com',        col: '#10b981', bg: '#f0fdf4', br: '#a7f3d0' },
+  ];
 
   return (
     <div id="stock" ref={sectionRef} className="relative w-full h-full overflow-hidden flex flex-col" style={{ background: '#ffffff' }}>
@@ -273,25 +336,30 @@ export default function StockManagement({ setActivePage }: Props) {
         <div className="glass-card flex flex-col min-h-0" style={{ flex: '1 1 0' }}>
           <div className="px-4 py-2.5 flex-shrink-0" style={{ borderBottom: '1px solid #f1f5f9' }}>
             <h3 className="font-sora font-semibold text-sm" style={{ color: '#1e293b' }}>Inventory Items</h3>
-            <p className="font-inter text-xs mt-0.5" style={{ color: '#94a3b8' }}>Click Order to trigger Birlea auto-ordering</p>
+            <p className="font-inter text-xs mt-0.5" style={{ color: '#94a3b8' }}>Click Order on low/critical items to send a CSV order to Birlea via email</p>
           </div>
           <div className="overflow-y-auto flex-1 min-h-0">
             <table className="w-full">
               <thead className="sticky top-0 z-10" style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                <tr>{['SKU','Product','Supplier','Stock','Status','Action'].map(h => <th key={h} className="text-left py-2 px-4 font-mono text-[10px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>{h}</th>)}</tr>
+                <tr>{['SKU', 'Birlea Code', 'Product', 'Stock', 'Status', 'Action'].map(h => (
+                  <th key={h} className="text-left py-2 px-4 font-mono text-[10px] uppercase tracking-wide" style={{ color: '#94a3b8' }}>{h}</th>
+                ))}</tr>
               </thead>
               <tbody>
                 {stockItems.map((item, i) => {
-                  const p = pct(item.current, item.max);
-                  const s = status(item.current, item.reorderAt);
+                  const p   = pct(item.current, item.max);
+                  const s   = status(item.current, item.reorderAt);
                   const bg  = s === 'critical' ? '#fef2f2' : s === 'warning' ? '#fffbeb' : '#f0fdf4';
                   const col = s === 'critical' ? '#dc2626' : s === 'warning' ? '#d97706' : '#16a34a';
                   const bdr = s === 'critical' ? '#fecaca' : s === 'warning' ? '#fde68a' : '#bbf7d0';
                   return (
                     <tr key={i} style={{ borderBottom: i === stockItems.length - 1 ? 'none' : '1px solid #f1f5f9' }} className="hover:bg-slate-50 transition-colors">
                       <td className="py-2.5 px-4"><span className="font-mono text-xs" style={{ color: '#0ea5e9' }}>{item.id}</span></td>
-                      <td className="py-2.5 px-4"><span className="font-inter text-sm font-medium" style={{ color: '#1e293b' }}>{item.name}</span><p className="font-inter text-[10px]" style={{ color: '#94a3b8' }}>{item.category}</p></td>
-                      <td className="py-2.5 px-4"><span className="font-inter text-xs" style={{ color: '#64748b' }}>{item.supplier}</span></td>
+                      <td className="py-2.5 px-4"><span className="font-mono text-xs font-semibold" style={{ color: '#475569' }}>{item.birleaCode}</span></td>
+                      <td className="py-2.5 px-4">
+                        <span className="font-inter text-sm font-medium" style={{ color: '#1e293b' }}>{item.name}</span>
+                        <p className="font-inter text-[10px]" style={{ color: '#94a3b8' }}>{item.category}</p>
+                      </td>
                       <td className="py-2.5 px-4">
                         <div className="flex items-center gap-2">
                           <div className="w-16 rounded-full overflow-hidden" style={{ height: '5px', background: '#f1f5f9' }}>
@@ -322,11 +390,9 @@ export default function StockManagement({ setActivePage }: Props) {
 
         {/* Birlea Automation Visualiser */}
         <div className="flex-shrink-0 bg-white border border-slate-200 rounded-xl shadow-sm px-6 py-3 mx-auto w-fit">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <p className="font-sora font-semibold text-sm" style={{ color: '#1e293b' }}>Birlea Auto-Order Pipeline</p>
-              <p className="font-inter text-[10px]" style={{ color: '#94a3b8' }}>Triggered when stock falls below reorder threshold</p>
-            </div>
+          <div className="mb-2">
+            <p className="font-sora font-semibold text-sm" style={{ color: '#1e293b' }}>Birlea Auto-Order Pipeline</p>
+            <p className="font-inter text-[10px]" style={{ color: '#94a3b8' }}>Dashboard → Make.com builds CSV → Email to Birlea</p>
           </div>
           <BirleaVisualiser steps={automationSteps} isRunning={automationRunning} />
           {automationResult && !automationRunning && (
@@ -339,25 +405,27 @@ export default function StockManagement({ setActivePage }: Props) {
 
       </div>
 
-      {/* Dialog */}
+      {/* ── Order dialog ── */}
       <Dialog open={orderDialogOpen} onOpenChange={setOrderDialogOpen}>
         <DialogContent className="max-w-lg" style={{ background: '#ffffff', border: '1px solid #e2e8f0', maxHeight: '90vh', overflowY: 'auto' }}>
           <DialogHeader>
             <DialogTitle className="font-sora font-bold text-xl" style={{ color: '#1e293b' }}>Place Birlea Order</DialogTitle>
             <DialogDescription className="font-inter text-sm" style={{ color: '#64748b' }}>
-              Complete the form — we'll build the CSV and email Birlea automatically via Make.com
+              Fill in the delivery details — Make.com will build and email the CSV to Birlea automatically
             </DialogDescription>
           </DialogHeader>
 
           {selectedItem && (
             <div className="space-y-4 mt-2">
 
-              {/* Product summary */}
+              {/* Product */}
               <div className="grid grid-cols-3 gap-2">
                 <div className="col-span-2 rounded-xl p-3" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
                   <p className="font-mono text-[9px] uppercase tracking-wide mb-0.5" style={{ color: '#94a3b8' }}>Product</p>
                   <p className="font-sora font-semibold text-sm" style={{ color: '#1e293b' }}>{selectedItem.name}</p>
-                  <p className="font-mono text-xs" style={{ color: '#0ea5e9' }}>{selectedItem.id}</p>
+                  <p className="font-mono text-xs mt-0.5" style={{ color: '#64748b' }}>
+                    Birlea code: <span style={{ color: '#0ea5e9', fontWeight: 600 }}>{selectedItem.birleaCode}</span>
+                  </p>
                 </div>
                 <div className="rounded-xl p-3" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
                   <p className="font-mono text-[9px] uppercase tracking-wide mb-0.5" style={{ color: '#94a3b8' }}>Stock</p>
@@ -366,15 +434,11 @@ export default function StockManagement({ setActivePage }: Props) {
                 </div>
               </div>
 
-              {/* Order type */}
+              {/* Delivery type — 4 options matching Birlea's CSV exactly */}
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-wide mb-2" style={{ color: '#64748b' }}>Delivery Type</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {([
-                    { val: 'standard',     label: 'Standard',     sub: 'orders@birlea.com',          col: '#0ea5e9', bg: '#f0f9ff', br: '#bae6fd' },
-                    { val: 'nextday',      label: 'Next Day',     sub: 'nextday@birlea.com',         col: '#8b5cf6', bg: '#faf5ff', br: '#ddd6fe' },
-                    { val: 'homedelivery', label: 'Home Delivery', sub: 'homedelivery@birlea.com',   col: '#f59e0b', bg: '#fffbeb', br: '#fde68a' },
-                  ] as { val: 'standard'|'nextday'|'homedelivery'; label: string; sub: string; col: string; bg: string; br: string }[]).map(t => (
+                <div className="grid grid-cols-2 gap-2">
+                  {deliveryTypes.map(t => (
                     <button key={t.val} onClick={() => setOrderType(t.val)}
                       className="rounded-xl p-2.5 text-left transition-all"
                       style={{
@@ -383,7 +447,7 @@ export default function StockManagement({ setActivePage }: Props) {
                         boxShadow: orderType === t.val ? `0 0 0 2px ${t.br}` : 'none',
                       }}>
                       <p className="font-sora font-semibold text-xs" style={{ color: orderType === t.val ? t.col : '#1e293b' }}>{t.label}</p>
-                      <p className="font-mono text-[8px] mt-0.5" style={{ color: '#94a3b8' }}>{t.sub}</p>
+                      <p className="font-mono text-[8px] mt-0.5" style={{ color: '#94a3b8' }}>{t.email}</p>
                     </button>
                   ))}
                 </div>
@@ -393,11 +457,15 @@ export default function StockManagement({ setActivePage }: Props) {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-mono text-[9px] uppercase tracking-wide mb-1 block" style={{ color: '#64748b' }}>Order Reference</label>
-                  <input value={orderRef} onChange={e => setOrderRef(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm font-mono" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
+                  <input value={orderRef} onChange={e => setOrderRef(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg text-sm font-mono"
+                    style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
                 </div>
                 <div>
                   <label className="font-mono text-[9px] uppercase tracking-wide mb-1 block" style={{ color: '#64748b' }}>Quantity</label>
-                  <input type="number" value={orderQty} onChange={e => setOrderQty(Number(e.target.value))} className="w-full px-3 py-2 rounded-lg text-sm font-mono" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
+                  <input type="number" value={orderQty} onChange={e => setOrderQty(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-lg text-sm font-mono"
+                    style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
                 </div>
               </div>
 
@@ -405,33 +473,67 @@ export default function StockManagement({ setActivePage }: Props) {
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-wide mb-2" style={{ color: '#64748b' }}>Delivery Details</p>
                 <div className="space-y-2">
-                  <input placeholder="Full Name *" value={orderName} onChange={e => setOrderName(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
-                  <input placeholder="Address Line 1 *" value={orderAddr1} onChange={e => setOrderAddr1(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
-                  <input placeholder="Address Line 2" value={orderAddr2} onChange={e => setOrderAddr2(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
+                  <input placeholder="Full Name *" value={orderName} onChange={e => setOrderName(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
+                  <input placeholder="Address Line 1 *" value={orderAddr1} onChange={e => setOrderAddr1(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
+                  <input placeholder="Address Line 2" value={orderAddr2} onChange={e => setOrderAddr2(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
                   <div className="grid grid-cols-2 gap-2">
-                    <input placeholder="Town *" value={orderTown} onChange={e => setOrderTown(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
-                    <input placeholder="Region / County" value={orderRegion} onChange={e => setOrderRegion(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
+                    <input placeholder="Town *" value={orderTown} onChange={e => setOrderTown(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
+                    <input placeholder="Region / County" value={orderRegion} onChange={e => setOrderRegion(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <input placeholder="Postcode *" value={orderPostcode} onChange={e => setOrderPostcode(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
-                    <input placeholder="Phone Number" value={orderPhone} onChange={e => setOrderPhone(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
+                    <input placeholder="Postcode *" value={orderPostcode} onChange={e => setOrderPostcode(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
+                    <input placeholder="Phone Number" value={orderPhone} onChange={e => setOrderPhone(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
                   </div>
-                  <input placeholder="Your email address *" value={orderEmail} onChange={e => setOrderEmail(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
+                  <input placeholder="Your email address *" value={orderEmail} onChange={e => setOrderEmail(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', outline: 'none' }} />
                 </div>
               </div>
 
-              {/* CC notice */}
+              {/* CSV preview */}
+              {orderName && orderAddr1 && orderTown && orderPostcode && orderEmail && (
+                <div>
+                  <p className="font-mono text-[9px] uppercase tracking-wide mb-1" style={{ color: '#94a3b8' }}>CSV Preview — this is what Birlea will receive</p>
+                  <pre className="w-full rounded-lg px-3 py-2 font-mono text-[9px] overflow-x-auto whitespace-pre"
+                    style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', lineHeight: 1.8 }}>
+                    {buildCsvContent({
+                      birleaCustomerNumber: 'C001768',
+                      orderType:    ORDER_TYPE_LABELS[orderType],
+                      orderNumber:  orderRef,
+                      name:         orderName,
+                      address1:     orderAddr1,
+                      address2:     orderAddr2,
+                      town:         orderTown,
+                      region:       orderRegion,
+                      postcode:     orderPostcode,
+                      deliveryCode: 'WAREHOUSE',
+                      buyerPhone:   orderPhone,
+                      email:        orderEmail,
+                      item:         selectedItem.birleaCode,
+                      quantity:     orderQty,
+                    })}
+                  </pre>
+                </div>
+              )}
+
+              {/* Routing notice */}
               <div className="rounded-xl px-3 py-2 flex items-start gap-2" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
-                <span className="text-emerald-500 mt-0.5 text-xs">✓</span>
+                <span className="text-emerald-500 mt-0.5 text-xs flex-shrink-0">✓</span>
                 <p className="font-inter text-[10px]" style={{ color: '#15803d' }}>
-                  Order CSV will be emailed to <strong>{orderType === 'standard' ? 'orders@birlea.com' : orderType === 'nextday' ? 'nextday@birlea.com' : 'homedelivery@birlea.com'}</strong> and CC'd to <strong>salesorderauotmation@birlea.com</strong>
+                  CSV will be emailed to <strong>{ORDER_TYPE_EMAILS[orderType]}</strong> and CC'd to <strong>salesorderauotmation@birlea.com</strong>
                 </p>
               </div>
 
               {/* Error */}
               {orderError && (
                 <div className="rounded-xl px-3 py-2 flex items-center gap-2" style={{ background: '#fef2f2', border: '1px solid #fecaca' }}>
-                  <span className="text-red-500 text-xs">✗</span>
+                  <span className="text-red-500 text-xs flex-shrink-0">✗</span>
                   <p className="font-inter text-xs" style={{ color: '#dc2626' }}>{orderError}</p>
                 </div>
               )}
