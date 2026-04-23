@@ -68,11 +68,11 @@ function BirleaVisualiser({ steps, isRunning }: { steps: AutoStep[]; isRunning: 
           }[step.status];
           return (
             <div key={step.id} className="flex items-center flex-shrink-0">
-              <div className="flex flex-col items-center" style={{ width: '90px' }}>
-                <div className="w-11 h-11 rounded-full flex items-center justify-center transition-all duration-500 relative"
-                  style={{ border: `2.5px solid ${c.border}`, background: c.bg, boxShadow: c.shadow }}>
-                  <span className="text-base select-none" style={{ filter: step.status === 'idle' ? 'grayscale(1) opacity(0.35)' : 'none' }}>{step.icon}</span>
-                  {step.status === 'running' && <div className="absolute inset-0 rounded-full animate-spin" style={{ border: '2px solid transparent', borderTopColor: '#0ea5e9', margin: '-4px' }} />}
+              <div className="flex flex-col items-center" style={{ width: '70px' }}>
+                <div className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-500 relative"
+                  style={{ border: `1.5px solid ${c.border}`, background: c.bg, boxShadow: c.shadow }}>
+                  <span className="text-sm select-none" style={{ filter: step.status === 'idle' ? 'grayscale(1) opacity(0.35)' : 'none' }}>{step.icon}</span>
+                  {step.status === 'running' && <div className="absolute inset-0 rounded-full animate-spin" style={{ border: '1.5px solid transparent', borderTopColor: '#0ea5e9', margin: '-3px' }} />}
                 </div>
                 <p className="font-sora font-semibold text-[10px] mt-1.5 text-center" style={{ color: c.textCol }}>{step.label}</p>
                 <p className="font-inter text-[9px] text-slate-400 text-center leading-tight">{step.sublabel}</p>
@@ -167,21 +167,27 @@ export default function StockManagement({ setActivePage }: Props) {
         </div>
 
         {/* Stats */}
-        <div className="flex gap-4 flex-shrink-0">
-          {[
-            { icon: <Package className="w-4 h-4" style={{ color: '#0ea5e9' }} />, bg: '#f0f9ff', val: totalUnits, label: 'Total Units', badge: '+12%', badgeCol: '#22c55e' },
-            { icon: <AlertTriangle className="w-4 h-4" style={{ color: '#ef4444' }} />, bg: '#fef2f2', val: lowCount, label: 'Low Stock Items', badge: 'Action Needed', badgeCol: '#ef4444' },
-            { icon: <ShoppingCart className="w-4 h-4" style={{ color: '#22c55e' }} />, bg: '#f0fdf4', val: 'Birlea', label: 'Auto-order supplier', badge: 'Auto', badgeCol: '#22c55e' },
-          ].map((s, i) => (
-            <div key={i} className="glass-card p-4 flex-1">
-              <div className="flex items-center justify-between mb-2">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: s.bg }}>{s.icon}</div>
-                <span className="font-mono text-[10px] flex items-center gap-1" style={{ color: s.badgeCol }}>{i === 0 && <TrendingUp className="w-3 h-3" />}{s.badge}</span>
-              </div>
-              <p className="font-sora font-bold text-2xl" style={{ color: '#1e293b' }}>{s.val}</p>
-              <p className="font-inter text-xs mt-0.5" style={{ color: '#64748b' }}>{s.label}</p>
+        <div className="flex gap-3 flex-shrink-0">
+          <div className="glass-card px-4 py-2.5 flex items-center gap-3">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#f0f9ff' }}>
+              <Package className="w-3.5 h-3.5" style={{ color: '#0ea5e9' }} />
             </div>
-          ))}
+            <div>
+              <p className="font-sora font-bold text-lg leading-none" style={{ color: '#1e293b' }}>{totalUnits}</p>
+              <p className="font-inter text-[10px] mt-0.5" style={{ color: '#64748b' }}>Total Units</p>
+            </div>
+            <span className="font-mono text-[10px] ml-2 flex items-center gap-0.5" style={{ color: '#22c55e' }}><TrendingUp className="w-3 h-3" /> +12%</span>
+          </div>
+          <div className="glass-card px-4 py-2.5 flex items-center gap-3">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#fef2f2' }}>
+              <AlertTriangle className="w-3.5 h-3.5" style={{ color: '#ef4444' }} />
+            </div>
+            <div>
+              <p className="font-sora font-bold text-lg leading-none" style={{ color: '#1e293b' }}>{lowCount}</p>
+              <p className="font-inter text-[10px] mt-0.5" style={{ color: '#64748b' }}>Low Stock</p>
+            </div>
+            <span className="font-mono text-[10px] ml-2" style={{ color: '#ef4444' }}>Action Needed</span>
+          </div>
         </div>
 
         {/* Table */}
