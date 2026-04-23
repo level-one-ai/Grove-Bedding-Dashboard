@@ -40,8 +40,7 @@ const BIRLEA_STEPS: Omit<AutoStep, 'status' | 'timestamp'>[] = [
   { id: 5, icon: '✅', label: 'Confirmed',  sublabel: 'Order placed'    },
 ];
 
-// Exact CSV header from Birlea's template — spaces after some columns are intentional
-const CSV_HEADER = 'Birlea Customer Number ,Order Type ,order number,NAME,Address1,Address2,Town,Region,cPostCode,(Delivery Code Stores Only),BuyerPhoneNumber,email,Item,Quantity';
+
 
 // Exact Order Type labels that Birlea's ERP expects
 const ORDER_TYPE_LABELS: Record<OrderType, string> = {
@@ -66,31 +65,7 @@ function ftimeNow() {
   return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 }
 
-// Build the CSV string exactly matching Birlea's template
-function buildCsvContent(row: {
-  birleaCustomerNumber: string; orderType: string; orderNumber: string;
-  name: string; address1: string; address2: string; town: string;
-  region: string; postcode: string; deliveryCode: string;
-  buyerPhone: string; email: string; item: string; quantity: number;
-}): string {
-  const dataRow = [
-    row.birleaCustomerNumber,
-    row.orderType,
-    row.orderNumber,
-    row.name,
-    row.address1,
-    row.address2,
-    row.town,
-    row.region,
-    row.postcode,
-    row.deliveryCode,
-    row.buyerPhone,
-    row.email,
-    row.item,
-    row.quantity,
-  ].join(',');
-  return CSV_HEADER + '\n' + dataRow + '\n';
-}
+
 
 // ── Pipeline visualiser ───────────────────────────────────────────────────────
 function BirleaVisualiser({ steps, isRunning }: { steps: AutoStep[]; isRunning: boolean }) {
