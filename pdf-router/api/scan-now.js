@@ -1,4 +1,3 @@
-const { logRead } = require('../lib/logRead');
 /**
  * /api/scan-now
  *
@@ -24,18 +23,42 @@ const axios = require('axios');
 
 const TEMP_FOLDER = 'Grove Group Scotland/Grove Bedding/Scans/Temp';
 
+// Cache getQueue() result — queue only changes when files are paused/completed
+// Saves 1 Firestore read per scan-now invocation (called every minute by scan-cron)
+let queueCache = null;
+let queueCacheTime = 0;
+const QUEUE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function getCachedQueue() {
+  if (queueCache && Date.now() - queueCacheTime < QUEUE_CACHE_TTL) {
+    return queueCache;
+  }
+  queueCache = await db.getQueue();
+  queueCacheTime = Date.now();
+  return queueCache;
+}
+
+function invalidateQueueCache() {
+  queueCache = null;
+  queueCacheTime = 0;
+}
+
 module.exports.config = {
   api: { bodyParser: { sizeLimit: '1mb' } },
   maxDuration: 300,
 };
 
 module.exports = async function handler(req, res) {
-  if (req.method !== 'POST') {
+  // Accept both GET (from Vercel cron) and POST (from webhook, auto-poll, file-page)
+  if (req.method !== 'POST' && req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Return immediately — processing happens async
-  res.status(200).json({ status: 'scanning', message: 'Scan started — check Vercel logs for progress' });
+  // Respond immediately so the caller is not blocked.
+  // With Fluid Compute enabled (fluid: true in vercel.json), Vercel guarantees
+  // that code after res.send() continues running until completion or maxDuration.
+  // Without Fluid Compute this would be unreliable — hence the vercel.json change.
+  res.status(200).json({ status: 'scanning', message: 'Scan started' });
 
   try {
     await scanAndProcess();
@@ -47,9 +70,6 @@ module.exports = async function handler(req, res) {
 async function scanAndProcess() {
 
   // No stop flag check — system always processes
-
-  // Ensure auto-poll is running — fire-and-forget, never blocks processing
-  ensureAutoPollRunning().catch(() => {});
 
   const userId = process.env.ONEDRIVE_USER_ID;
   const folderPath = 'Grove Group Scotland/Grove Bedding/Scans';
@@ -72,7 +92,7 @@ async function scanAndProcess() {
   console.log(`[scan-now] ${allPdfs.length} PDF(s) in Scans`);
 
   // Separate into new (priority) and old files
-  const queue = await db.getQueue();
+  const queue = await getCachedQueue();
   const oldFileIds = queue.oldFiles || {};
 
   const newFiles = [];
@@ -92,9 +112,25 @@ async function scanAndProcess() {
       continue;
     }
 
-    // Already actively processing — leave it alone
+    // Already actively processing — but check if it's been stuck too long
     if (existing && existing.status === 'processing') {
-      console.log(`[scan-now] "${file.name}" already processing — skipping`);
+      // If a file has been 'processing' for more than 10 minutes something went wrong
+      // (normal processing takes 1-5 minutes). Reset it so it gets picked up again.
+      const STUCK_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
+      const updatedAt = existing.updatedAt?.toMillis?.() || existing.updatedAt?._seconds * 1000 || 0;
+      const createdAt = existing.createdAt?.toMillis?.() || existing.createdAt?._seconds * 1000 || 0;
+      const lastActivity = Math.max(updatedAt, createdAt);
+      const stuckFor = Date.now() - lastActivity;
+      if (lastActivity > 0 && stuckFor > STUCK_THRESHOLD_MS) {
+        console.log(`[scan-now] "${file.name}" stuck in processing for ${Math.round(stuckFor / 60000)}min — resetting`);
+        await db.updateRecord(file.id, {
+          status: 'reset',
+          error: `Auto-reset after being stuck in processing for ${Math.round(stuckFor / 60000)} minutes`,
+        });
+        newFiles.push({ file, existing: { ...existing, status: 'reset' }, paused: false });
+      } else {
+        console.log(`[scan-now] "${file.name}" already processing — skipping`);
+      }
       continue;
     }
 
@@ -147,6 +183,9 @@ async function scanAndProcess() {
 
   console.log('[scan-now] No files to process — queue empty');
 }
+
+// Invalidate queue cache whenever a file status changes
+function invalidateQueue() { invalidateQueueCache(); }
 
 async function resumePausedFile(file, pausedData, token, userId) {
   if (!pausedData || !pausedData.resumeFromPage) {
@@ -404,7 +443,6 @@ async function batchGetRecords(fileIds) {
     docs.forEach(doc => {
       result[doc.id] = doc.exists ? doc.data() : null;
     });
-    logRead('scan-now batchGetRecords', fileIds.length);
     return result;
   } catch (err) {
     console.warn('[scan-now] batchGetRecords error, falling back to individual reads:', err.message);
@@ -413,36 +451,6 @@ async function batchGetRecords(fileIds) {
       try { result[id] = await db.getRecord(id); } catch (e) { result[id] = null; }
     }
     return result;
-  }
-}
-
-/**
- * Ensure auto-poll is alive — starts it if the heartbeat is stale or missing.
- * Called at the start of every scan-now invocation so the safety net
- * is always running regardless of how scan-now was triggered.
- */
-async function ensureAutoPollRunning() {
-  try {
-    const admin = require('firebase-admin');
-    const firestore = admin.firestore();
-    const lockDoc = await firestore.collection('settings').doc('autoPollLock').get();
-    const STALE_MS = 2 * 60 * 1000;
-    let needsStart = true;
-    if (lockDoc.exists) {
-      const heartbeat = lockDoc.data().heartbeat
-        ? new Date(lockDoc.data().heartbeat).getTime() : 0;
-      if (Date.now() - heartbeat < STALE_MS) needsStart = false;
-    }
-    if (needsStart) {
-      const baseUrl = process.env.WEBHOOK_NOTIFICATION_URL || 'https://grove-pdf-router.vercel.app';
-      axios.post(`${baseUrl}/api/auto-poll`, {}, {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 5000,
-      }).catch(() => {});
-      console.log('[scan-now] auto-poll was not running — started it');
-    }
-  } catch (err) {
-    // Non-fatal
   }
 }
 

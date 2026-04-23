@@ -2,18 +2,22 @@
  * src/sections/FileManagement.tsx
  * ─────────────────────────────────
  * Grove PDF Router — File Management page.
- * White light theme matching the dashboard.
- * Features:
- *  • Make.com style automation visualiser — horizontal circles with icons + arrows
- *  • Scans column — unprocessed PDFs from OneDrive
- *  • Processed column — filed PDFs with GD/OneDrive links, auto-refreshes after run
- *  • Automation history — last 10 runs with file name, date, time, status
+ * Ported from the working standalone dashboard with:
+ *  - Status cache (one Firestore load, reused everywhere)
+ *  - Scans column (unprocessed PDFs, filtered by Firestore completed records)
+ *  - Processed column (individual renamed page files, with GD + OD links)
+ *  - SSE notify stream for instant new-file detection
+ *  - Manual file selection + full run button (no auto/manual toggle — always auto)
+ *  - Diag, Logs, GD Retry panels
+ *  - Waiting queue badge
+ *  - Recently processed history sidebar
+ *  - Pipeline visualiser (circles + arrows)
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   FileText, RefreshCw, CheckCircle2, Upload,
-  Play, Zap, Pause, CloudUpload, Inbox,
+  Play, CloudUpload, Inbox,
   ChevronDown, ChevronUp, ExternalLink,
   RotateCcw, X, AlertCircle, Wrench, ScrollText,
   Clock, CheckCheck,
@@ -29,12 +33,15 @@ interface ScanFile {
   webUrl?: string;
 }
 
-interface ProcessedFile {
-  name: string;
-  size: number;
-  createdAt: string;
-  webUrl?: string;
-  rec: StatusRecord | null;
+interface PageFile {
+  pageNumber: number;
+  finalFileName: string | null;
+  nonOrderFileName: string | null;
+  customerName: string | null;
+  ref: string | null;
+  supplier: string | null;
+  oneDriveUrl: string | null;
+  googleDriveUrl: string | null;
 }
 
 interface StatusRecord {
@@ -47,6 +54,20 @@ interface StatusRecord {
   renamedFiles?: string[];
   googleDriveFolderUrl?: string;
   totalPages?: number;
+  completedAt?: string;
+  pageFiles?: PageFile[];
+}
+
+interface ProcessedRow {
+  fileName: string;
+  pageNumber: number;
+  customerName: string;
+  ref: string;
+  supplier: string;
+  gdUrl: string;
+  odUrl: string;
+  completedAt: string;
+  fileId: string;
 }
 
 interface WaitingFile {
@@ -92,16 +113,15 @@ interface HistoryRun {
   customer?: string;
 }
 
-// ─── Pipeline steps matching the PDF router exactly ───────────────────────────
+// ─── Pipeline steps ───────────────────────────────────────────────────────────
 
 const PIPELINE_STEPS: Omit<AutoStep, 'status' | 'message' | 'timestamp'>[] = [
-  { id: 1, label: 'OneDrive',     sublabel: 'File detected',      icon: '☁️' },
+  { id: 1, label: 'Initialise',   sublabel: 'Create record',     icon: '🗄️' },
   { id: 2, label: 'Download',     sublabel: 'Pull from OneDrive', icon: '⬇️' },
   { id: 3, label: 'Split PDF',    sublabel: 'Separate pages',     icon: '📄' },
   { id: 4, label: 'Make.com',     sublabel: 'Send to webhook',    icon: '⚡' },
   { id: 5, label: 'Claude AI',    sublabel: 'Extract data',       icon: '🧠' },
   { id: 6, label: 'File OneDrive', sublabel: 'Move to Processed', icon: '📁' },
-  { id: 7, label: 'Google Drive', sublabel: 'Copy to GD folder',  icon: '🟢' },
 ];
 
 function buildIdleSteps(): AutoStep[] {
@@ -130,26 +150,31 @@ function fsize(b: number) {
   const k = 1024, i = Math.floor(Math.log(b) / Math.log(k));
   return parseFloat((b / Math.pow(k, i)).toFixed(1)) + ['B', 'KB', 'MB', 'GB'][i];
 }
+function timeAgo(iso: string) {
+  if (!iso) return '';
+  const ms = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(ms / 60000);
+  const hours = Math.floor(ms / 3600000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  return fdateShort(iso);
+}
 async function api(url: string, opts?: RequestInit) {
   try { const r = await fetch(url, opts); return r.json().catch(() => null); }
   catch { return null; }
 }
 
-// ─── Automation Visualiser ────────────────────────────────────────────────────
+// ─── Pipeline Visualiser ──────────────────────────────────────────────────────
 
-function AutomationVisualiser({ steps, isRunning }: {
-  steps: AutoStep[];
-  isRunning: boolean;
-  fileName: string;
-}) {
-  const allDone   = steps.every(s => s.status === 'done');
-  const hasError  = steps.some(s => s.status === 'error');
-  const isIdle    = steps.every(s => s.status === 'idle');
+function AutomationVisualiser({ steps, isRunning }: { steps: AutoStep[]; isRunning: boolean }) {
+  const allDone  = steps.every(s => s.status === 'done');
+  const hasError = steps.some(s => s.status === 'error');
+  const isIdle   = steps.every(s => s.status === 'idle');
 
   return (
     <div className="w-full">
-      {/* Status indicator — compact, no title text */}
-      <div className="mb-1 flex justify-end">
+      <div className="mb-2 flex justify-end">
         {isRunning && (
           <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-50 border border-sky-200">
             <div className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
@@ -175,78 +200,47 @@ function AutomationVisualiser({ steps, isRunning }: {
           </div>
         )}
       </div>
-
-      {/* Circles row */}
       <div className="flex items-start justify-center w-full overflow-x-auto pb-1">
         {steps.map((step, idx) => {
           const c = {
-            idle:    { border: '#e2e8f0', bg: '#f8fafc', textCol: '#94a3b8', dotCol: '#cbd5e1',   shadow: 'none' },
-            running: { border: '#0ea5e9', bg: '#f0f9ff', textCol: '#0369a1', dotCol: '#0ea5e9',   shadow: '0 0 0 5px #bae6fd' },
-            done:    { border: '#10b981', bg: '#f0fdf4', textCol: '#065f46', dotCol: '#10b981',   shadow: '0 0 0 3px #a7f3d0' },
-            error:   { border: '#ef4444', bg: '#fef2f2', textCol: '#991b1b', dotCol: '#ef4444',   shadow: 'none' },
+            idle:    { border: '#e2e8f0', bg: '#f8fafc', textCol: '#94a3b8', dotCol: '#cbd5e1', shadow: 'none' },
+            running: { border: '#0ea5e9', bg: '#f0f9ff', textCol: '#0369a1', dotCol: '#0ea5e9', shadow: '0 0 0 5px #bae6fd' },
+            done:    { border: '#10b981', bg: '#f0fdf4', textCol: '#065f46', dotCol: '#10b981', shadow: '0 0 0 3px #a7f3d0' },
+            error:   { border: '#ef4444', bg: '#fef2f2', textCol: '#991b1b', dotCol: '#ef4444', shadow: 'none' },
           }[step.status];
 
           return (
             <div key={step.id} className="flex items-center flex-shrink-0">
-              {/* Circle + labels */}
-              <div className="flex flex-col items-center" style={{ width: '76px' }}>
-                {/* Circle */}
-                <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-500 relative"
-                  style={{ border: `2.5px solid ${c.border}`, background: c.bg, boxShadow: c.shadow }}
-                >
-                  <span
-                    className="text-lg select-none transition-all duration-500"
-                    style={{ filter: step.status === 'idle' ? 'grayscale(1) opacity(0.35)' : 'none' }}
-                  >
+              <div className="flex flex-col items-center" style={{ width: '80px' }}>
+                <div className="w-11 h-11 rounded-full flex items-center justify-center transition-all duration-500 relative"
+                  style={{ border: `2.5px solid ${c.border}`, background: c.bg, boxShadow: c.shadow }}>
+                  <span className="text-base select-none transition-all duration-500"
+                    style={{ filter: step.status === 'idle' ? 'grayscale(1) opacity(0.35)' : 'none' }}>
                     {step.icon}
                   </span>
-                  {/* Spinning ring for running state */}
                   {step.status === 'running' && (
-                    <div
-                      className="absolute inset-0 rounded-full animate-spin"
-                      style={{ border: '2px solid transparent', borderTopColor: '#0ea5e9', margin: '-4px' }}
-                    />
+                    <div className="absolute inset-0 rounded-full animate-spin"
+                      style={{ border: '2px solid transparent', borderTopColor: '#0ea5e9', margin: '-4px' }} />
                   )}
                 </div>
-
-                {/* Step name */}
                 <p className="font-sora font-semibold text-[10px] mt-1.5 text-center transition-colors duration-500"
-                  style={{ color: c.textCol }}>
-                  {step.label}
-                </p>
-                <p className="font-inter text-[9px] text-slate-400 text-center leading-tight px-1">
-                  {step.sublabel}
-                </p>
-
-                {/* Status badge */}
+                  style={{ color: c.textCol }}>{step.label}</p>
+                <p className="font-inter text-[9px] text-slate-400 text-center leading-tight px-1">{step.sublabel}</p>
                 <div className="mt-1.5 flex items-center gap-1">
-                  <div className="w-1.5 h-1.5 rounded-full transition-all duration-500"
-                    style={{ background: c.dotCol }} />
-                  <span className="font-mono text-[9px] font-semibold uppercase tracking-wide transition-all duration-500"
-                    style={{ color: c.dotCol }}>
-                    {step.status === 'idle' ? 'idle'
-                      : step.status === 'running' ? 'running'
-                      : step.status === 'done' ? 'success'
-                      : 'failed'}
+                  <div className="w-1.5 h-1.5 rounded-full transition-all duration-500" style={{ background: c.dotCol }} />
+                  <span className="font-mono text-[8px] font-semibold uppercase tracking-wide" style={{ color: c.dotCol }}>
+                    {step.status === 'idle' ? 'idle' : step.status === 'running' ? 'running' : step.status === 'done' ? 'done' : 'error'}
                   </span>
                 </div>
-
-                {/* Timestamp */}
-                {step.timestamp && (
-                  <p className="font-mono text-[9px] text-slate-400 mt-0.5">{step.timestamp}</p>
-                )}
+                {step.timestamp && <p className="font-mono text-[8px] text-slate-400 mt-0.5">{step.timestamp}</p>}
               </div>
-
-              {/* Arrow */}
               {idx < steps.length - 1 && (
-                <div className="flex items-center flex-shrink-0 mb-8" style={{ width: '20px', paddingTop: '2px' }}>
+                <div className="flex items-center flex-shrink-0 mb-8" style={{ width: '20px' }}>
                   <div className="h-px flex-1 transition-all duration-500"
                     style={{ background: steps[idx + 1].status !== 'idle' ? '#10b981' : '#e2e8f0' }} />
                   <div className="transition-all duration-500" style={{
                     width: 0, height: 0,
-                    borderTop: '4px solid transparent',
-                    borderBottom: '4px solid transparent',
+                    borderTop: '4px solid transparent', borderBottom: '4px solid transparent',
                     borderLeft: `6px solid ${steps[idx + 1].status !== 'idle' ? '#10b981' : '#e2e8f0'}`,
                   }} />
                 </div>
@@ -267,7 +261,6 @@ function HistoryRow({ run }: { run: HistoryRun }) {
     failed:  { bg: 'bg-red-50',     border: 'border-red-200',     text: 'text-red-600',     dot: 'bg-red-500',     label: 'Failed' },
     running: { bg: 'bg-sky-50',     border: 'border-sky-200',     text: 'text-sky-600',     dot: 'bg-sky-500 animate-pulse', label: 'Running' },
   }[run.status];
-
   return (
     <div className="flex items-center gap-3 py-2.5 px-3 rounded-xl border border-slate-100 bg-white hover:border-slate-200 hover:shadow-sm transition-all">
       <div className="w-7 h-7 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center flex-shrink-0">
@@ -294,13 +287,11 @@ function HistoryRow({ run }: { run: HistoryRun }) {
 
 export default function FileManagement() {
   const [scanFiles, setScanFiles]         = useState<ScanFile[]>([]);
-  const [procFiles, setProcFiles]         = useState<ProcessedFile[]>([]);
+  const [procRows, setProcRows]           = useState<ProcessedRow[]>([]);
   const [statusCache, setStatusCache]     = useState<StatusRecord[]>([]);
   const [waitingFiles, setWaitingFiles]   = useState<WaitingFile[]>([]);
   const [selectedFile, setSelectedFile]   = useState<ScanFile | null>(null);
-  const [runMode, setRunMode]             = useState<1|2|3>(1);
   const [isRunning, setIsRunning]         = useState(false);
-  const [autoMode, setAutoMode]           = useState(true);
   const [runResult, setRunResult]         = useState<RunResult | null>(null);
   const [runError, setRunError]           = useState<string | null>(null);
   const [pipelineSteps, setPipelineSteps] = useState<AutoStep[]>(buildIdleSteps());
@@ -316,6 +307,7 @@ export default function FileManagement() {
   const [gdRows, setGdRows]               = useState<{ id: string; name: string; detail: string; status: string; linkUrl?: string }[]>([]);
   const [gdRunning, setGdRunning]         = useState(false);
   const [expandedProc, setExpandedProc]   = useState<number | null>(null);
+  const [statusLoaded, setStatusLoaded]   = useState(false);
 
   const autoProcessing = useRef(false);
   const autoKnownIds   = useRef<Record<string, boolean> | null>(null);
@@ -324,7 +316,15 @@ export default function FileManagement() {
   useEffect(() => {
     loadAll();
     openNotifyStream();
-    return () => { notifyEs.current?.close(); };
+    // Refresh status cache every 5 mins
+    const statusInterval = setInterval(() => loadStatusCache(), 300000);
+    // Poll waiting queue every 2 mins
+    const waitInterval = setInterval(() => loadWaiting(), 120000);
+    return () => {
+      notifyEs.current?.close();
+      clearInterval(statusInterval);
+      clearInterval(waitInterval);
+    };
   }, []);
 
   async function loadAll() {
@@ -336,7 +336,26 @@ export default function FileManagement() {
     const d = await api('/api/status?limit=200');
     const records: StatusRecord[] = d?.records ?? [];
     setStatusCache(records);
+    setStatusLoaded(true);
+    // Load history from completed records
+    loadHistoryFromCache(records);
     return records;
+  }
+
+  function loadHistoryFromCache(records: StatusRecord[]) {
+    const completed = records
+      .filter(r => r.status === 'completed' && r.completedAt)
+      .sort((a, b) => new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime())
+      .slice(0, 10);
+    setHistory(completed.map(r => ({
+      id: r.fileId ?? Math.random().toString(),
+      fileName: r.originalFileName ?? r.fileId ?? 'Unknown',
+      date: fdateShort(r.completedAt ?? ''),
+      time: ftime(r.completedAt ?? ''),
+      status: 'success' as const,
+      pages: r.totalPages,
+      customer: r.customerName ?? undefined,
+    })));
   }
 
   async function loadScans(cache?: StatusRecord[]): Promise<ScanFile[]> {
@@ -345,89 +364,67 @@ export default function FileManagement() {
     if (!d?.success || !d.files) return [];
     const processedIds: Record<string, boolean> = {};
     c.forEach(r => { if (r.status === 'completed' && r.fileId) processedIds[r.fileId] = true; });
-    const unprocessed = d.files.filter((f: ScanFile) => !processedIds[f.id]);
+    const unprocessed = (d.files as ScanFile[]).filter(f => !processedIds[f.id]);
     setScanFiles(unprocessed);
     if (autoKnownIds.current === null) {
       autoKnownIds.current = {};
-      unprocessed.forEach((f: ScanFile) => { autoKnownIds.current![f.id] = true; });
+      unprocessed.forEach(f => { autoKnownIds.current![f.id] = true; });
     }
     return unprocessed;
   }
 
   async function loadProcessed(cache?: StatusRecord[]) {
     const c = cache ?? statusCache;
+    const completed = c
+      .filter(r => r.status === 'completed')
+      .sort((a, b) => new Date(b.completedAt ?? 0).getTime() - new Date(a.completedAt ?? 0).getTime());
 
-    // Build processed file list from Firestore records (renamedFiles) first.
-    // This shows the actual renamed output files rather than the original scan names.
-    const fromRecords: ProcessedFile[] = [];
-    const seen = new Set<string>();
-    c.forEach(r => {
-      if (r.status === 'completed' && r.renamedFiles?.length) {
-        r.renamedFiles.forEach(name => {
-          if (!seen.has(name)) {
-            seen.add(name);
-            fromRecords.push({
-              name,
-              size: 0,
-              createdAt: '',
-              webUrl: r.googleDriveFolderUrl ? undefined : undefined,
-              rec: r,
-            });
-          }
+    const rows: ProcessedRow[] = [];
+
+    completed.forEach(rec => {
+      const pages = rec.pageFiles ?? [];
+      if (pages.length) {
+        pages.forEach(p => {
+          rows.push({
+            fileName:     p.finalFileName ?? p.nonOrderFileName ?? 'Unknown',
+            pageNumber:   p.pageNumber,
+            customerName: p.customerName ?? rec.customerName ?? '',
+            ref:          p.ref ?? rec.ref ?? '',
+            supplier:     p.supplier ?? rec.supplier ?? '',
+            gdUrl:        p.googleDriveUrl ?? rec.googleDriveFolderUrl ?? '',
+            odUrl:        p.oneDriveUrl ?? '',
+            completedAt:  rec.completedAt ?? '',
+            fileId:       rec.fileId ?? '',
+          });
+        });
+      } else if (rec.renamedFiles?.length) {
+        rec.renamedFiles.forEach((fname, pi) => {
+          rows.push({
+            fileName:     fname,
+            pageNumber:   pi + 1,
+            customerName: rec.customerName ?? '',
+            ref:          rec.ref ?? '',
+            supplier:     rec.supplier ?? '',
+            gdUrl:        rec.googleDriveFolderUrl ?? '',
+            odUrl:        '',
+            completedAt:  rec.completedAt ?? '',
+            fileId:       rec.fileId ?? '',
+          });
         });
       }
     });
 
-    // Also fetch the OneDrive Processed folder to get file sizes, dates, and webUrls
-    // and merge them into the records-based list
-    const d = await api('/api/scan-files?folder=Processed');
-    if (d?.success && d.files) {
-      const byName: Record<string, ScanFile> = {};
-      (d.files as ScanFile[]).forEach(f => { byName[f.name] = f; });
-
-      // Update records with OneDrive metadata where available
-      fromRecords.forEach(pf => {
-        const od = byName[pf.name];
-        if (od) {
-          pf.size = od.size;
-          pf.createdAt = od.createdAt;
-          pf.webUrl = od.webUrl;
-          delete byName[pf.name]; // mark as handled
-        }
-      });
-
-      // Add any files in OneDrive Processed that are not already in records
-      // (e.g. older files before Firestore tracking)
-      const byFile: Record<string, StatusRecord> = {};
-      const byOriginal: Record<string, StatusRecord> = {};
-      c.forEach(r => {
-        (r.renamedFiles ?? []).forEach(f => { byFile[f] = r; });
-        if (r.originalFileName) byOriginal[r.originalFileName.toLowerCase()] = r;
-      });
-
-      Object.values(byName).forEach((f: ScanFile) => {
-        let rec: StatusRecord | null = byFile[f.name] ?? null;
-        if (!rec) {
-          const base = f.name.replace(/[-_]\d+\.pdf$/i, '').replace(/\.pdf$/i, '').toLowerCase();
-          rec = byOriginal[base] ?? null;
-        }
-        if (!rec) rec = c.find(r => r.customerName && f.name.toLowerCase().includes(r.customerName.toLowerCase())) ?? null;
-        if (!seen.has(f.name)) {
-          fromRecords.push({ ...f, rec: rec ?? null });
-          seen.add(f.name);
-        }
-      });
+    // Fallback: if no Firestore records, show raw OD files
+    if (!rows.length) {
+      const od = await api('/api/scan-files?folder=Processed');
+      if (od?.success && od.files?.length) {
+        (od.files as ScanFile[]).forEach((f, i) => {
+          rows.push({ fileName: f.name, pageNumber: i + 1, customerName: '', ref: '', supplier: '', gdUrl: '', odUrl: f.webUrl ?? '', completedAt: f.createdAt, fileId: '' });
+        });
+      }
     }
 
-    // Sort: most recently processed first (records first, then by createdAt)
-    fromRecords.sort((a, b) => {
-      if (a.createdAt && b.createdAt) return b.createdAt.localeCompare(a.createdAt);
-      if (a.createdAt) return -1;
-      if (b.createdAt) return 1;
-      return 0;
-    });
-
-    setProcFiles(fromRecords);
+    setProcRows(rows);
   }
 
   async function loadWaiting() {
@@ -442,9 +439,14 @@ export default function FileManagement() {
     es.addEventListener('new-file', () => {
       loadStatusCache().then(cache => {
         loadScans(cache).then(files => {
-          if (!autoProcessing.current && files?.length && autoMode) {
+          loadWaiting();
+          // Auto-process first new file
+          if (!autoProcessing.current && files?.length) {
             const newFile = files.find(f => !autoKnownIds.current?.[f.id]);
-            if (newFile) { autoKnownIds.current![newFile.id] = true; autoRunFile(newFile); }
+            if (newFile) {
+              autoKnownIds.current![newFile.id] = true;
+              autoRunFile(newFile);
+            }
           }
         });
       });
@@ -472,11 +474,11 @@ export default function FileManagement() {
     setHistory(prev => [run, ...prev].slice(0, 10));
   }
 
-  function updateHistoryStatus(id: string, updates: Partial<HistoryRun>) {
+  function updateHistoryRun(id: string, updates: Partial<HistoryRun>) {
     setHistory(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
   }
 
-  async function streamRun(f: ScanFile, step: number, isAuto: boolean) {
+  async function streamRun(f: ScanFile, isAuto: boolean) {
     const isWaiting = waitingFiles.some(w => w.fileId === f.id);
     const now = new Date().toISOString();
     const runId = `run-${Date.now()}`;
@@ -486,8 +488,9 @@ export default function FileManagement() {
       const resp = await fetch('/api/test-run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileId: f.id, fileName: f.name, runMode: isAuto ? 'auto' : 'manual', runStep: step, isWaiting }),
+        body: JSON.stringify({ fileId: f.id, fileName: f.name, runMode: isAuto ? 'auto' : 'manual', runStep: 1, isWaiting }),
       });
+      if (!resp.ok) { finishErr(runId, 'Server error ' + resp.status); return; }
       const reader = resp.body!.getReader();
       const dec = new TextDecoder();
       let buf = '', evt: string | null = null;
@@ -502,30 +505,28 @@ export default function FileManagement() {
             try {
               const d = JSON.parse(line.slice(6));
               if (evt === 'progress') {
-                const ps = d.step ?? 0;
-                if (d.status === 'running') updateStep(ps, 'running', d.message ?? '');
-                else if (d.status === 'done') updateStep(ps, 'done', d.message ?? '');
-                else if (d.status === 'error') updateStep(ps, 'error', d.message ?? '');
+                if (d.status === 'running') updateStep(d.step ?? 0, 'running', d.message ?? '');
+                else if (d.status === 'done') updateStep(d.step ?? 0, 'done', d.message ?? '');
+                else if (d.status === 'error') updateStep(d.step ?? 0, 'error', d.message ?? '');
               } else if (evt === 'complete') {
                 allStepsDone();
-                updateStep(7, 'done', 'Filed to Google Drive');
                 setRunResult(d as RunResult);
-                updateHistoryStatus(runId, { status: 'success', pages: d.totalPages, customer: d.customerName });
+                updateHistoryRun(runId, { status: 'success', pages: d.totalPages, customer: d.customerName });
                 finishOk();
               } else if (evt === 'error') {
                 updateStep(d.step ?? 1, 'error', d.message ?? '');
-                updateHistoryStatus(runId, { status: 'failed' });
-                finishErr(d.message ?? 'Unknown error');
+                updateHistoryRun(runId, { status: 'failed' });
+                finishErr(runId, d.message ?? 'Unknown error');
               }
-            } catch {}
+            } catch { /* ignore parse errors */ }
           }
           if (line === '') evt = null;
         }
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
-      updateHistoryStatus(runId, { status: 'failed' });
-      finishErr(msg);
+      updateHistoryRun(runId, { status: 'failed' });
+      finishErr(runId, msg);
     }
   }
 
@@ -535,10 +536,10 @@ export default function FileManagement() {
     setTimeout(() => {
       loadStatusCache().then(cache => { loadScans(cache); loadProcessed(cache); });
       setSelectedFile(null);
-    }, 3000);
+    }, 5000);
   }
 
-  function finishErr(msg: string) {
+  function finishErr(_runId: string, msg: string) {
     setIsRunning(false);
     autoProcessing.current = false;
     setRunError(msg);
@@ -554,7 +555,7 @@ export default function FileManagement() {
     setRunResult(null);
     setRunError(null);
     updateStep(1, 'running', 'File detected in OneDrive');
-    await streamRun(f, 1, true);
+    await streamRun(f, true);
   }
 
   async function startRun() {
@@ -564,14 +565,18 @@ export default function FileManagement() {
     setRunResult(null);
     setRunError(null);
     updateStep(1, 'running', 'Initialising...');
-    await streamRun(selectedFile, runMode, false);
+    await streamRun(selectedFile, false);
   }
 
   async function doReset(fileId: string, e: React.MouseEvent) {
     e.stopPropagation();
     if (!confirm('Reset this file so it can be reprocessed?')) return;
-    await api('/api/admin?action=reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fileId }) });
+    await api('/api/admin?action=reset', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fileId }),
+    });
     loadWaiting();
+    loadStatusCache().then(cache => loadScans(cache));
   }
 
   async function runDiag() {
@@ -590,7 +595,8 @@ export default function FileManagement() {
       if (!grouped[e.source]) grouped[e.source] = { total: 0, count: 0 };
       grouped[e.source].total += e.reads; grouped[e.source].count++;
     });
-    const lines = Object.entries(grouped).sort((a, b) => b[1].total - a[1].total)
+    const lines = Object.entries(grouped)
+      .sort((a, b) => b[1].total - a[1].total)
       .map(([src, g]) => `${src}: ${g.total} reads (${g.count} inv)`).join('\n');
     setLogData(`Total: ${d.totalReads} reads (last ${d.windowMins ?? 60}min)\n\n${lines}`);
     setLogLoading(false);
@@ -618,19 +624,23 @@ export default function FileManagement() {
                 return [...next, { id: 'file-' + ev.name, name: ev.name, status: ev.status, detail: ev.status === 'filing' ? `Filing ${ev.pages}p...` : ev.status === 'success' ? `${ev.pages}p filed` : ev.reason ?? ev.status, linkUrl: ev.gdFolderUrl }];
               });
             }
-          } catch {}
+          } catch { /* ignore */ }
         }
       }
-    } catch {}
+    } catch { /* ignore */ }
     setGdRunning(false);
-    setTimeout(() => { loadStatusCache().then(cache => loadProcessed(cache)); }, 1500);
+    setTimeout(() => loadStatusCache().then(cache => loadProcessed(cache)), 1500);
   }
 
   async function sendFileToGd(fileName: string, fileId: string) {
-    await api('/api/gdrive?action=file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fileName, fileId: fileId || undefined }) });
+    await api('/api/gdrive?action=file', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fileName, fileId: fileId || undefined }),
+    });
     loadStatusCache().then(cache => loadProcessed(cache));
   }
 
+  // ─── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="h-full overflow-hidden flex flex-col" style={{ background: '#f8fafc' }}>
@@ -643,65 +653,87 @@ export default function FileManagement() {
             <p className="font-inter text-sm text-slate-400 mt-0.5">Grove PDF Router · OneDrive · Google Drive · Make.com</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1">
-              <button onClick={() => setAutoMode(true)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-sora font-semibold transition-all ${autoMode ? 'bg-sky-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-                <Zap className="w-3 h-3" /> Auto
-              </button>
-              <button onClick={() => setAutoMode(false)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-sora font-semibold transition-all ${!autoMode ? 'bg-slate-100 text-slate-700' : 'text-slate-500 hover:text-slate-700'}`}>
-                <Pause className="w-3 h-3" /> Manual
-              </button>
-            </div>
+            {/* Watching indicator */}
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-xl">
-              <div className={`w-2 h-2 rounded-full ${autoMode ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
-              <span className={`font-mono text-[11px] font-semibold ${autoMode ? 'text-emerald-600' : 'text-slate-400'}`}>{autoMode ? 'Watching' : 'Paused'}</span>
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="font-mono text-[11px] font-semibold text-emerald-600">Watching</span>
             </div>
-            <button onClick={() => setDiagOpen(d => !d)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-sora font-semibold border transition-all ${diagOpen ? 'bg-sky-50 border-sky-200 text-sky-600' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}><Wrench className="w-3 h-3" /> Diag</button>
-            <button onClick={() => setLogsOpen(d => !d)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-sora font-semibold border transition-all ${logsOpen ? 'bg-sky-50 border-sky-200 text-sky-600' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}><ScrollText className="w-3 h-3" /> Logs</button>
-            <button onClick={retryGoogleDrive} disabled={gdRunning} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-sora font-semibold bg-white border border-slate-200 text-slate-500 hover:border-emerald-300 hover:text-emerald-600 transition-all disabled:opacity-50"><CloudUpload className="w-3 h-3" /> GD Retry</button>
-            <button onClick={loadAll} className="p-2 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-sky-500 hover:border-sky-200 transition-all"><RefreshCw className="w-3.5 h-3.5" /></button>
+            <button onClick={() => setDiagOpen(d => !d)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-sora font-semibold border transition-all ${diagOpen ? 'bg-sky-50 border-sky-200 text-sky-600' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}>
+              <Wrench className="w-3 h-3" /> Diag
+            </button>
+            <button onClick={() => setLogsOpen(d => !d)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-sora font-semibold border transition-all ${logsOpen ? 'bg-sky-50 border-sky-200 text-sky-600' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}>
+              <ScrollText className="w-3 h-3" /> Logs
+            </button>
+            <button onClick={retryGoogleDrive} disabled={gdRunning}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-sora font-semibold bg-white border border-slate-200 text-slate-500 hover:border-emerald-300 hover:text-emerald-600 transition-all disabled:opacity-50">
+              <CloudUpload className="w-3 h-3" /> GD Retry
+            </button>
+            <button onClick={loadAll}
+              className="p-2 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-sky-500 hover:border-sky-200 transition-all">
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
 
         {/* ── Diag panel ── */}
         {diagOpen && (
-          <div className="glass-card p-5 mb-5">
+          <div className="bg-white border border-slate-200 rounded-xl p-5 mb-3 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2"><Wrench className="w-4 h-4 text-sky-500" /><span className="font-sora font-semibold text-sm text-slate-700">System Diagnostics</span></div>
+              <div className="flex items-center gap-2">
+                <Wrench className="w-4 h-4 text-sky-500" />
+                <span className="font-sora font-semibold text-sm text-slate-700">System Diagnostics</span>
+              </div>
               <button onClick={() => setDiagOpen(false)} className="text-slate-300 hover:text-slate-500"><X className="w-4 h-4" /></button>
             </div>
-            {diagLoading ? <div className="flex items-center gap-2 text-slate-400"><RefreshCw className="w-3.5 h-3.5 animate-spin" /><span className="font-mono text-xs">Running checks...</span></div>
+            {diagLoading
+              ? <div className="flex items-center gap-2 text-slate-400"><RefreshCw className="w-3.5 h-3.5 animate-spin" /><span className="font-mono text-xs">Running checks...</span></div>
               : <div className="space-y-2">
                   {diagItems.map((item, i) => (
                     <div key={i} className={`flex items-start gap-3 p-2.5 rounded-lg border ${item.ok ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
-                      <span className={item.ok ? 'text-emerald-500' : 'text-red-500'}>{item.ok ? '✓' : '✗'}</span>
-                      <div><p className="font-sora text-xs font-semibold text-slate-700">{item.label}</p><p className={`font-mono text-[10px] ${item.ok ? 'text-emerald-600' : 'text-red-600'}`}>{item.detail}</p></div>
+                      <span className={item.ok ? 'text-emerald-500 text-sm' : 'text-red-500 text-sm'}>{item.ok ? '✓' : '✗'}</span>
+                      <div>
+                        <p className="font-sora text-xs font-semibold text-slate-700">{item.label}</p>
+                        <p className={`font-mono text-[10px] ${item.ok ? 'text-emerald-600' : 'text-red-600'}`}>{item.detail}</p>
+                      </div>
                     </div>
                   ))}
                   {!diagItems.length && <p className="font-mono text-xs text-slate-400">No results</p>}
-                </div>}
+                </div>
+            }
           </div>
         )}
 
         {/* ── Logs panel ── */}
         {logsOpen && (
-          <div className="glass-card p-5 mb-5">
+          <div className="bg-white border border-slate-200 rounded-xl p-5 mb-3 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2"><ScrollText className="w-4 h-4 text-sky-500" /><span className="font-sora font-semibold text-sm text-slate-700">Firestore Read Log</span></div>
+              <div className="flex items-center gap-2">
+                <ScrollText className="w-4 h-4 text-sky-500" />
+                <span className="font-sora font-semibold text-sm text-slate-700">Firestore Read Log</span>
+              </div>
               <div className="flex items-center gap-2">
                 <button onClick={loadLogs} className="text-slate-400 hover:text-sky-500"><RefreshCw className="w-3.5 h-3.5" /></button>
                 <button onClick={() => setLogsOpen(false)} className="text-slate-300 hover:text-slate-500"><X className="w-4 h-4" /></button>
               </div>
             </div>
-            {logLoading ? <div className="flex items-center gap-2 text-slate-400"><RefreshCw className="w-3.5 h-3.5 animate-spin" /><span className="font-mono text-xs">Loading...</span></div>
-              : <pre className="font-mono text-[11px] text-slate-500 whitespace-pre-wrap">{logData || 'No data'}</pre>}
+            {logLoading
+              ? <div className="flex items-center gap-2 text-slate-400"><RefreshCw className="w-3.5 h-3.5 animate-spin" /><span className="font-mono text-xs">Loading...</span></div>
+              : <pre className="font-mono text-[11px] text-slate-500 whitespace-pre-wrap">{logData || 'No data'}</pre>
+            }
           </div>
         )}
 
-        {/* ── GD panel ── */}
+        {/* ── GD retry panel ── */}
         {gdOpen && (
-          <div className="glass-card p-5 mb-5">
+          <div className="bg-white border border-slate-200 rounded-xl p-5 mb-3 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2"><CloudUpload className="w-4 h-4 text-emerald-500" /><span className="font-sora font-semibold text-sm text-slate-700">Google Drive Filing</span>{gdRunning && <RefreshCw className="w-3.5 h-3.5 text-emerald-400 animate-spin" />}</div>
+              <div className="flex items-center gap-2">
+                <CloudUpload className="w-4 h-4 text-emerald-500" />
+                <span className="font-sora font-semibold text-sm text-slate-700">Google Drive Filing</span>
+                {gdRunning && <RefreshCw className="w-3.5 h-3.5 text-emerald-400 animate-spin" />}
+              </div>
               <button onClick={() => setGdOpen(false)} className="text-slate-300 hover:text-slate-500"><X className="w-4 h-4" /></button>
             </div>
             <div className="space-y-2 max-h-48 overflow-y-auto">
@@ -721,17 +753,21 @@ export default function FileManagement() {
 
         {/* ── Queue panel ── */}
         {queueOpen && waitingFiles.length > 0 && (
-          <div className="glass-card p-5 mb-5">
+          <div className="bg-white border border-slate-200 rounded-xl p-5 mb-3 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2"><Inbox className="w-4 h-4 text-sky-500" /><span className="font-sora font-semibold text-sm text-slate-700">Waiting Queue</span></div>
               <button onClick={() => setQueueOpen(false)} className="text-slate-300 hover:text-slate-500"><X className="w-4 h-4" /></button>
             </div>
             <div className="space-y-2">
               {waitingFiles.map(f => (
-                <button key={f.fileId} onClick={() => { const scan = scanFiles.find(s => s.id === f.fileId); if (scan) setSelectedFile(scan); setQueueOpen(false); }}
+                <button key={f.fileId}
+                  onClick={() => { const scan = scanFiles.find(s => s.id === f.fileId); if (scan) setSelectedFile(scan); setQueueOpen(false); }}
                   className="w-full flex items-center gap-3 p-2.5 rounded-xl border border-slate-200 bg-white hover:border-sky-200 transition-all text-left">
                   <FileText className="w-4 h-4 text-sky-400 flex-shrink-0" />
-                  <div className="flex-1 min-w-0"><p className="font-sora text-xs font-medium text-slate-700 truncate">{f.fileName}</p><p className="font-mono text-[10px] text-slate-400">{f.totalPages ?? '?'} pages</p></div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-sora text-xs font-medium text-slate-700 truncate">{f.fileName}</p>
+                    <p className="font-mono text-[10px] text-slate-400">{f.totalPages ?? '?'} pages</p>
+                  </div>
                   <Play className="w-3 h-3 text-sky-400 flex-shrink-0" />
                 </button>
               ))}
@@ -742,29 +778,44 @@ export default function FileManagement() {
         {/* ── Three columns ── */}
         <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 gap-4 overflow-hidden">
 
-          {/* Scans */}
-          <div className="glass-card flex flex-col min-h-0 overflow-hidden">
+          {/* ── Scans column ── */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-0 overflow-hidden">
             <div className="p-4 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
               <div>
                 <div className="flex items-center gap-2">
                   <Upload className="w-4 h-4 text-sky-500" />
                   <span className="font-sora font-semibold text-sm text-slate-700">Scans</span>
                   {waitingFiles.length > 0 && (
-                    <button onClick={() => setQueueOpen(q => !q)} className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-sky-50 border border-sky-200 text-sky-600 hover:bg-sky-100">
-                      <Inbox className="w-2.5 h-2.5" /><span className="font-mono text-[9px] font-bold">{waitingFiles.length}</span>
+                    <button onClick={() => setQueueOpen(q => !q)}
+                      className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-sky-50 border border-sky-200 text-sky-600 hover:bg-sky-100">
+                      <Inbox className="w-2.5 h-2.5" />
+                      <span className="font-mono text-[9px] font-bold">{waitingFiles.length}</span>
                     </button>
                   )}
                 </div>
-                <p className="font-mono text-[10px] text-slate-400 mt-0.5">{scanFiles.length} file{scanFiles.length !== 1 ? 's' : ''} · OneDrive Scans</p>
+                <p className="font-mono text-[10px] text-slate-400 mt-0.5">
+                  {scanFiles.length} file{scanFiles.length !== 1 ? 's' : ''} · OneDrive Scans
+                </p>
               </div>
-              <button onClick={() => loadStatusCache().then(cache => loadScans(cache))} className="p-1.5 rounded-lg text-slate-400 hover:text-sky-500 border border-transparent hover:border-sky-200 transition-all"><RefreshCw className="w-3.5 h-3.5" /></button>
+              <button onClick={() => loadStatusCache().then(cache => loadScans(cache))}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-sky-500 border border-transparent hover:border-sky-200 transition-all">
+                <RefreshCw className="w-3.5 h-3.5" />
+              </button>
             </div>
+
             <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
               {scanFiles.length === 0
-                ? <div className="flex flex-col items-center justify-center h-48 gap-2 text-slate-300"><CheckCircle2 className="w-8 h-8" /><p className="font-sora text-sm">All files processed</p></div>
+                ? <div className="flex flex-col items-center justify-center h-48 gap-2 text-slate-300">
+                    <CheckCircle2 className="w-8 h-8" />
+                    <p className="font-sora text-sm">All files processed</p>
+                  </div>
                 : scanFiles.map(f => (
                   <div key={f.id} onClick={() => !isRunning && setSelectedFile(f)}
-                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer group ${selectedFile?.id === f.id ? 'border-sky-300 bg-sky-50 shadow-sm' : waitingFiles.some(w => w.fileId === f.id) ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'}`}>
+                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer group ${
+                      selectedFile?.id === f.id ? 'border-sky-300 bg-sky-50 shadow-sm'
+                      : waitingFiles.some(w => w.fileId === f.id) ? 'border-amber-200 bg-amber-50'
+                      : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
+                    }`}>
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${selectedFile?.id === f.id ? 'bg-sky-100' : 'bg-slate-100'}`}>
                       <FileText className={`w-4 h-4 ${selectedFile?.id === f.id ? 'text-sky-500' : 'text-slate-400'}`} />
                     </div>
@@ -773,31 +824,28 @@ export default function FileManagement() {
                       <p className="font-mono text-[10px] text-slate-400">{fsize(f.size)} · {fdate(f.createdAt)}</p>
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {waitingFiles.some(w => w.fileId === f.id) && <span className="px-1.5 py-0.5 rounded bg-amber-100 border border-amber-200 font-mono text-[8px] text-amber-600">WAIT</span>}
-                      <button onClick={e => doReset(f.id, e)} className="w-5 h-5 rounded border border-transparent hover:border-red-200 text-slate-200 hover:text-red-400 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100"><RotateCcw className="w-2.5 h-2.5" /></button>
+                      {waitingFiles.some(w => w.fileId === f.id) && (
+                        <span className="px-1.5 py-0.5 rounded bg-amber-100 border border-amber-200 font-mono text-[8px] text-amber-600">WAIT</span>
+                      )}
+                      <button onClick={e => doReset(f.id, e)}
+                        className="w-5 h-5 rounded border border-transparent hover:border-red-200 text-slate-200 hover:text-red-400 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <RotateCcw className="w-2.5 h-2.5" />
+                      </button>
                       <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${selectedFile?.id === f.id ? 'border-sky-500 bg-sky-500' : 'border-slate-300'}`}>
                         {selectedFile?.id === f.id && <span className="text-white text-[8px] font-bold">✓</span>}
                       </div>
                     </div>
                   </div>
-                ))}
+                ))
+              }
             </div>
+
+            {/* Run panel */}
             {selectedFile && !isRunning && (
               <div className="p-4 border-t border-slate-100 flex-shrink-0">
-                <p className="font-sora text-xs font-semibold text-slate-600 mb-2 truncate">{selectedFile.name}</p>
-                <div className="space-y-1.5 mb-3">
-                  {([
-                    [1, 'Full run', 'AI + file to GD & OneDrive'],
-                    [2, 'AI only', 'Skip filing'],
-                    [3, 'Split only', 'Skip Make.com'],
-                  ] as [1|2|3, string, string][]).map(([val, title, sub]) => (
-                    <label key={val} onClick={() => setRunMode(val)} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all ${runMode === val ? 'border-sky-300 bg-sky-50' : 'border-slate-200 hover:border-slate-300'}`}>
-                      <div className={`w-3 h-3 rounded-full border-2 flex-shrink-0 ${runMode === val ? 'border-sky-500 bg-sky-500' : 'border-slate-300'}`} />
-                      <div><p className="font-sora text-xs font-semibold text-slate-700">{title}</p><p className="font-mono text-[9px] text-slate-400">{sub}</p></div>
-                    </label>
-                  ))}
-                </div>
-                <button onClick={startRun} className="w-full py-2.5 rounded-xl bg-sky-500 text-white font-sora font-semibold text-sm flex items-center justify-center gap-2 hover:bg-sky-600 transition-all shadow-sm">
+                <p className="font-sora text-xs font-semibold text-slate-600 mb-3 truncate">{selectedFile.name}</p>
+                <button onClick={startRun}
+                  className="w-full py-2.5 rounded-xl bg-sky-500 text-white font-sora font-semibold text-sm flex items-center justify-center gap-2 hover:bg-sky-600 transition-all shadow-sm">
                   <Play className="w-3.5 h-3.5" /> Process File
                 </button>
               </div>
@@ -812,32 +860,46 @@ export default function FileManagement() {
             )}
           </div>
 
-          {/* Processed */}
-          <div className="glass-card flex flex-col min-h-0 overflow-hidden">
+          {/* ── Processed column ── */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-0 overflow-hidden">
             <div className="p-4 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
               <div>
-                <div className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /><span className="font-sora font-semibold text-sm text-slate-700">Processed</span></div>
-                <p className="font-mono text-[10px] text-slate-400 mt-0.5">{procFiles.length} file{procFiles.length !== 1 ? 's' : ''} · OneDrive Processed</p>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  <span className="font-sora font-semibold text-sm text-slate-700">Processed</span>
+                </div>
+                <p className="font-mono text-[10px] text-slate-400 mt-0.5">
+                  {procRows.length} page{procRows.length !== 1 ? 's' : ''} · OneDrive Processed
+                </p>
               </div>
-              <button onClick={() => loadStatusCache().then(cache => loadProcessed(cache))} className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-500 border border-transparent hover:border-emerald-200 transition-all"><RefreshCw className="w-3.5 h-3.5" /></button>
+              <button onClick={() => loadStatusCache().then(cache => loadProcessed(cache))}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-500 border border-transparent hover:border-emerald-200 transition-all">
+                <RefreshCw className="w-3.5 h-3.5" />
+              </button>
             </div>
+
             <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
-              {procFiles.length === 0
-                ? <div className="flex flex-col items-center justify-center h-48 gap-2 text-slate-300"><FileText className="w-8 h-8" /><p className="font-sora text-sm">No files yet</p></div>
-                : procFiles.map((f, idx) => {
-                  const hasGd = !!f.rec?.googleDriveFolderUrl;
-                  const gdPending = !!f.rec && !hasGd;
+              {procRows.length === 0
+                ? <div className="flex flex-col items-center justify-center h-48 gap-2 text-slate-300">
+                    <FileText className="w-8 h-8" />
+                    <p className="font-sora text-sm">No pages yet</p>
+                  </div>
+                : procRows.map((p, idx) => {
                   const isExpanded = expandedProc === idx;
                   return (
                     <div key={idx} className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-                      <div onClick={() => setExpandedProc(isExpanded ? null : idx)} className="flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 transition-all">
-                        <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0"><CheckCircle2 className="w-4 h-4 text-emerald-500" /></div>
+                      <div onClick={() => setExpandedProc(isExpanded ? null : idx)}
+                        className="flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 transition-all">
+                        <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                        </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-sora text-xs font-semibold text-slate-700 truncate">{f.name}</p>
+                          <p className="font-sora text-xs font-semibold text-slate-700 truncate">{p.fileName}</p>
                           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                            {hasGd && <span className="px-1.5 py-0.5 rounded-full text-[8px] font-mono font-bold bg-emerald-100 border border-emerald-200 text-emerald-600">GD ✓</span>}
-                            {gdPending && <span className="px-1.5 py-0.5 rounded-full text-[8px] font-mono font-bold bg-amber-100 border border-amber-200 text-amber-600">GD ⏳</span>}
-                            {f.webUrl && <span className="px-1.5 py-0.5 rounded-full text-[8px] font-mono font-bold bg-sky-100 border border-sky-200 text-sky-600">OD ✓</span>}
+                            {p.gdUrl && <span className="px-1.5 py-0.5 rounded-full text-[8px] font-mono font-bold bg-emerald-100 border border-emerald-200 text-emerald-600">GD ✓</span>}
+                            {!p.gdUrl && p.fileId && <span className="px-1.5 py-0.5 rounded-full text-[8px] font-mono font-bold bg-amber-100 border border-amber-200 text-amber-600">GD ⏳</span>}
+                            {p.odUrl && <span className="px-1.5 py-0.5 rounded-full text-[8px] font-mono font-bold bg-sky-100 border border-sky-200 text-sky-600">OD ✓</span>}
+                            {p.completedAt && <span className="font-mono text-[8px] text-slate-400">{timeAgo(p.completedAt)}</span>}
                           </div>
                         </div>
                         {isExpanded ? <ChevronUp className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />}
@@ -845,36 +907,50 @@ export default function FileManagement() {
                       {isExpanded && (
                         <div className="px-4 pb-3 space-y-1.5 border-t border-slate-100 bg-slate-50">
                           <div className="h-2" />
-                          {f.rec?.customerName && <div className="flex gap-2"><span className="font-mono text-[9px] text-slate-400 w-16">Customer</span><span className="font-inter text-xs text-slate-600">{f.rec.customerName}</span></div>}
-                          {f.rec?.ref && <div className="flex gap-2"><span className="font-mono text-[9px] text-slate-400 w-16">Ref</span><span className="font-inter text-xs text-slate-600">{f.rec.ref}</span></div>}
-                          <div className="flex gap-2"><span className="font-mono text-[9px] text-slate-400 w-16">Size</span><span className="font-inter text-xs text-slate-600">{fsize(f.size)}</span></div>
-                          <div className="flex gap-2"><span className="font-mono text-[9px] text-slate-400 w-16">Added</span><span className="font-inter text-xs text-slate-600">{fdate(f.createdAt)}</span></div>
-                          {hasGd && <div className="flex gap-2 items-center"><span className="font-mono text-[9px] text-slate-400 w-16">GDrive</span><a href={f.rec!.googleDriveFolderUrl} target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] text-emerald-500 hover:underline flex items-center gap-1">Open folder <ExternalLink className="w-2.5 h-2.5" /></a></div>}
-                          {gdPending && <div className="flex gap-2 items-center"><span className="font-mono text-[9px] text-slate-400 w-16">GDrive</span><button onClick={() => sendFileToGd(f.name, f.rec?.fileId ?? '')} className="font-mono text-[10px] text-emerald-500 border border-emerald-200 px-2 py-0.5 rounded-lg hover:bg-emerald-50 transition-all">Send to GD</button></div>}
-                          {f.webUrl && <div className="flex gap-2 items-center"><span className="font-mono text-[9px] text-slate-400 w-16">OneDrive</span><a href={f.webUrl} target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] text-sky-500 hover:underline flex items-center gap-1">Open file <ExternalLink className="w-2.5 h-2.5" /></a></div>}
+                          {p.customerName && <div className="flex gap-2"><span className="font-mono text-[9px] text-slate-400 w-16">Customer</span><span className="font-inter text-xs text-slate-600">{p.customerName}</span></div>}
+                          {p.ref && <div className="flex gap-2"><span className="font-mono text-[9px] text-slate-400 w-16">Ref</span><span className="font-inter text-xs text-slate-600">{p.ref}</span></div>}
+                          {p.supplier && <div className="flex gap-2"><span className="font-mono text-[9px] text-slate-400 w-16">Supplier</span><span className="font-inter text-xs text-slate-600">{p.supplier}</span></div>}
+                          {p.completedAt && <div className="flex gap-2"><span className="font-mono text-[9px] text-slate-400 w-16">Processed</span><span className="font-inter text-xs text-slate-600">{fdate(p.completedAt)}</span></div>}
+                          {p.gdUrl
+                            ? <div className="flex gap-2 items-center"><span className="font-mono text-[9px] text-slate-400 w-16">GDrive</span><a href={p.gdUrl} target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] text-emerald-500 hover:underline flex items-center gap-1">Open folder <ExternalLink className="w-2.5 h-2.5" /></a></div>
+                            : p.fileId && <div className="flex gap-2 items-center"><span className="font-mono text-[9px] text-slate-400 w-16">GDrive</span><button onClick={() => sendFileToGd(p.fileName, p.fileId)} className="font-mono text-[10px] text-emerald-500 border border-emerald-200 px-2 py-0.5 rounded-lg hover:bg-emerald-50 transition-all">Send to GD</button></div>
+                          }
+                          {p.odUrl && <div className="flex gap-2 items-center"><span className="font-mono text-[9px] text-slate-400 w-16">OneDrive</span><a href={p.odUrl} target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] text-sky-500 hover:underline flex items-center gap-1">Open file <ExternalLink className="w-2.5 h-2.5" /></a></div>}
                         </div>
                       )}
                     </div>
                   );
-                })}
+                })
+              }
             </div>
           </div>
 
-          {/* History */}
-          <div className="glass-card flex flex-col min-h-0 overflow-hidden">
+          {/* ── History column ── */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-0 overflow-hidden">
             <div className="p-4 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
               <div>
-                <div className="flex items-center gap-2"><Clock className="w-4 h-4 text-slate-400" /><span className="font-sora font-semibold text-sm text-slate-700">Run History</span></div>
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-slate-400" />
+                  <span className="font-sora font-semibold text-sm text-slate-700">Run History</span>
+                </div>
                 <p className="font-mono text-[10px] text-slate-400 mt-0.5">Last 10 automation runs</p>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 font-mono text-[9px] text-emerald-600 font-bold">{history.filter(r => r.status === 'success').length} ok</span>
-                <span className="px-2 py-0.5 rounded-full bg-red-50 border border-red-200 font-mono text-[9px] text-red-500 font-bold">{history.filter(r => r.status === 'failed').length} fail</span>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 font-mono text-[9px] text-emerald-600 font-bold">
+                  {history.filter(r => r.status === 'success').length} ok
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-red-50 border border-red-200 font-mono text-[9px] text-red-500 font-bold">
+                  {history.filter(r => r.status === 'failed').length} fail
+                </span>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
               {history.length === 0
-                ? <div className="flex flex-col items-center justify-center h-48 gap-2 text-slate-300"><Clock className="w-8 h-8" /><p className="font-sora text-sm text-center">No runs yet</p><p className="font-inter text-xs text-center">Process a file to see history</p></div>
+                ? <div className="flex flex-col items-center justify-center h-48 gap-2 text-slate-300">
+                    <Clock className="w-8 h-8" />
+                    <p className="font-sora text-sm text-center">No runs yet</p>
+                    <p className="font-inter text-xs text-center">Process a file to see history</p>
+                  </div>
                 : history.map(run => <HistoryRow key={run.id} run={run} />)
               }
             </div>
@@ -882,9 +958,9 @@ export default function FileManagement() {
               <div className="p-4 border-t border-slate-100 flex-shrink-0">
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { label: 'Total', val: history.length, c: 'text-slate-600' },
-                    { label: 'Success', val: history.filter(r => r.status === 'success').length, c: 'text-emerald-600' },
-                    { label: 'Failed', val: history.filter(r => r.status === 'failed').length, c: 'text-red-500' },
+                    { label: 'Total',   val: history.length,                                      c: 'text-slate-600' },
+                    { label: 'Success', val: history.filter(r => r.status === 'success').length,  c: 'text-emerald-600' },
+                    { label: 'Failed',  val: history.filter(r => r.status === 'failed').length,   c: 'text-red-500' },
                   ].map(s => (
                     <div key={s.label} className="text-center p-2 rounded-lg bg-slate-50 border border-slate-100">
                       <p className={`font-sora font-bold text-lg ${s.c}`}>{s.val}</p>
@@ -897,14 +973,16 @@ export default function FileManagement() {
           </div>
         </div>
 
-        {/* ── Automation Visualiser (full width) ── */}
-        <div className="mt-4 mx-auto" style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", padding: "12px 16px", width: "fit-content", maxWidth: "100%" }}>
+        {/* ── Pipeline Visualiser ── */}
+        <div className="mt-4 flex-shrink-0 bg-white border border-slate-200 rounded-2xl shadow-sm p-4">
           <AutomationVisualiser steps={pipelineSteps} isRunning={isRunning} />
 
-          {/* Result */}
           {runResult && !isRunning && (
-            <div className="mt-5 p-4 rounded-xl bg-emerald-50 border border-emerald-200">
-              <div className="flex items-center gap-2 mb-3"><CheckCheck className="w-4 h-4 text-emerald-500" /><span className="font-sora font-semibold text-sm text-emerald-700">Processing Complete</span></div>
+            <div className="mt-4 p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+              <div className="flex items-center gap-2 mb-3">
+                <CheckCheck className="w-4 h-4 text-emerald-500" />
+                <span className="font-sora font-semibold text-sm text-emerald-700">Processing Complete</span>
+              </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {runResult.customerName && <div><p className="font-mono text-[9px] text-slate-400 uppercase">Customer</p><p className="font-sora text-xs font-medium text-slate-700">{runResult.customerName}</p></div>}
                 {runResult.ref && <div><p className="font-mono text-[9px] text-slate-400 uppercase">Reference</p><p className="font-sora text-xs font-medium text-slate-700">{runResult.ref}</p></div>}
@@ -914,10 +992,12 @@ export default function FileManagement() {
             </div>
           )}
 
-          {/* Error */}
           {runError && !isRunning && (
-            <div className="mt-5 p-4 rounded-xl bg-red-50 border border-red-200">
-              <div className="flex items-center gap-2 mb-1"><AlertCircle className="w-4 h-4 text-red-500" /><span className="font-sora font-semibold text-sm text-red-700">Processing Failed</span></div>
+            <div className="mt-4 p-4 rounded-xl bg-red-50 border border-red-200">
+              <div className="flex items-center gap-2 mb-1">
+                <AlertCircle className="w-4 h-4 text-red-500" />
+                <span className="font-sora font-semibold text-sm text-red-700">Processing Failed</span>
+              </div>
               <p className="font-mono text-xs text-red-600">{runError}</p>
               {selectedFile && <button onClick={startRun} className="mt-2 font-sora text-xs text-sky-500 hover:underline">↺ Try Again</button>}
             </div>
