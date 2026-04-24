@@ -1,4 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { initializeApp, getApps } from 'firebase/app';
+import { getDatabase, ref, onValue } from 'firebase/database';
 import { gsap } from 'gsap';
 import {
   FileText, Printer, Truck, PhoneCall,
@@ -32,6 +34,48 @@ const systemHealth = [
 ];
 
 export default function DashboardHero() {
+  const [dymoStatus, setDymoStatus] = useState<{ status: 'ok'|'warning'|'offline'; detail: string }>({
+    status: 'warning', detail: 'Connecting...',
+  });
+
+  useEffect(() => {
+    const db = getLabelDb();
+    if (!db) {
+      setDymoStatus({ status: 'warning', detail: 'Firebase not configured' });
+      return;
+    }
+    const statusRef = ref(db, 'bridgeStatus');
+    const unsub = onValue(statusRef, (snap) => {
+      const data = snap.val();
+      if (!data) {
+        setDymoStatus({ status: 'warning', detail: 'Bridge never connected' });
+        return;
+      }
+      const lastSeen = data.lastSeen ?? 0;
+      const ageMs = Date.now() - lastSeen;
+      const ageMins = Math.floor(ageMs / 60000);
+
+      if (!data.online || ageMs > 120000) {
+        // Offline if explicitly set offline or heartbeat > 2 minutes old
+        setDymoStatus({ status: 'offline', detail: `Last seen ${ageMins}m ago` });
+      } else if (!data.dymoService) {
+        setDymoStatus({ status: 'warning', detail: 'Bridge online · DYMO service not running' });
+      } else if (!data.printerFound) {
+        setDymoStatus({ status: 'warning', detail: 'Bridge online · Printer not found' });
+      } else {
+        setDymoStatus({ status: 'ok', detail: `${data.printerName ?? 'DYMO'} · Connected` });
+      }
+    }, (err) => {
+      console.error('bridgeStatus read error:', err);
+      setDymoStatus({ status: 'warning', detail: 'Firebase read error' });
+    });
+    return () => unsub();
+  }, []);
+
+  const systems = [
+    ...STATIC_SYSTEMS,
+    { label: 'DYMO Bridge', status: dymoStatus.status === 'offline' ? 'warning' as const : dymoStatus.status, detail: dymoStatus.detail },
+  ];
   const sectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

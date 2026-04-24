@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { initializeApp, getApps } from 'firebase/app';
+import { getDatabase, ref, push, serverTimestamp } from 'firebase/database';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { AlertTriangle, X, RefreshCw, Tag, CheckCircle } from 'lucide-react';
 import './App.css';
@@ -17,6 +19,21 @@ import FileManagement from './sections/FileManagement';
 import SalesOrders from './sections/SalesOrders';
 
 export type PageId = 'dashboard' | 'stock' | 'logs' | 'dispatch' | 'labels' | 'orders' | 'calls' | 'files' | 'salesorders';
+
+// ── Firebase Realtime DB — grove-label-print project ──────────────────────────
+// Replace these values with your grove-label-print Firebase project credentials
+const LABEL_FIREBASE_CONFIG = {
+  apiKey:      import.meta.env.VITE_LABEL_FIREBASE_API_KEY      ?? '',
+  authDomain:  import.meta.env.VITE_LABEL_FIREBASE_AUTH_DOMAIN  ?? '',
+  databaseURL: import.meta.env.VITE_LABEL_FIREBASE_DATABASE_URL ?? '',
+  projectId:   import.meta.env.VITE_LABEL_FIREBASE_PROJECT_ID   ?? '',
+};
+
+function getLabelDb() {
+  const app = getApps().find(a => a.name === 'grove-labels')
+    ?? initializeApp(LABEL_FIREBASE_CONFIG, 'grove-labels');
+  return getDatabase(app);
+}
 
 // ── Shared label types exported for child components ──
 export interface LabelData {
@@ -137,7 +154,37 @@ function App() {
     setLabels(prev => prev.map(l => l.id === id ? { ...l, status: 'verified' } : l));
   };
 
-  const printLabel = (id: string) => {
+  const printLabel = async (id: string) => {
+    const label = labels.find(l => l.id === id);
+    if (!label) return;
+
+    // Write the print job to Firebase Realtime DB — bridge agent picks it up instantly
+    if (LABEL_FIREBASE_CONFIG.databaseURL) {
+      try {
+        const db = getLabelDb();
+        await push(ref(db, 'printJobs'), {
+          status:        'pending',
+          orderId:       label.orderId,
+          recipientName: label.recipientName,
+          address1:      label.address1,
+          address2:      label.address2 ?? '',
+          town:          label.town,
+          region:        label.region ?? '',
+          postCode:      label.postCode,
+          phone:         label.phone ?? '',
+          orderType:     label.orderType,
+          deliveryDate:  label.createdAt?.split(',')[0] ?? '',
+          items:         label.items ?? [],
+          createdAt:     serverTimestamp(),
+          source:        'dashboard',
+        });
+        console.log('[labels] Print job sent to Firebase for label', id);
+      } catch (err) {
+        console.error('[labels] Failed to write print job to Firebase:', err);
+      }
+    }
+
+    // Update local state to show as printed
     setLabels(prev => prev.map(l => l.id === id ? { ...l, status: 'printed' } : l));
   };
 
