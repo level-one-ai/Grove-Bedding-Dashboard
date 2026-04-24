@@ -384,8 +384,8 @@ export default function StockManagement({ setActivePage }: Props) {
 
       {/* ── Order dialog ── */}
       <Dialog open={orderDialogOpen} onOpenChange={setOrderDialogOpen}>
-        <DialogContent className="max-w-lg" style={{ background: '#ffffff', border: '1px solid #e2e8f0', maxHeight: '90vh', overflowY: 'auto' }}>
-          <DialogHeader>
+        <DialogContent className="max-w-lg flex flex-col" style={{ background: '#ffffff', border: '1px solid #e2e8f0', maxHeight: '85vh', overflow: 'hidden' }}>
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle className="font-sora font-bold text-xl" style={{ color: '#1e293b' }}>Place Birlea Order</DialogTitle>
             <DialogDescription className="font-inter text-sm" style={{ color: '#64748b' }}>
               Fill in the delivery details — Make.com will build and email the CSV to Birlea automatically
@@ -393,7 +393,7 @@ export default function StockManagement({ setActivePage }: Props) {
           </DialogHeader>
 
           {selectedItem && (
-            <div className="space-y-4 mt-2">
+            <div className="space-y-4 mt-2 overflow-y-auto pr-1" style={{ flex: '1 1 0', minHeight: 0 }}>
 
               {/* Product */}
               <div className="grid grid-cols-3 gap-2">
