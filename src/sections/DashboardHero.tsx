@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { initializeApp, getApps } from 'firebase/app';
-import { getDatabase, ref, onValue } from 'firebase/database';
+import { getDatabase, ref as dbRef, onValue } from 'firebase/database';
 import { gsap } from 'gsap';
 import {
   FileText, Printer, Truck, PhoneCall,
@@ -26,12 +26,26 @@ const recentCalls = [
   { client: 'Acme Furniture Co', outcome: 'Order confirmed & dispatch arranged', time: '09:30', status: 'completed' },
 ];
 
-const systemHealth = [
-  { label: 'OneDrive Sync',    status: 'ok',      detail: 'Watching Scans folder' },
-  { label: 'Make.com Webhook', status: 'ok',      detail: 'Receiving page data' },
-  { label: 'Google Drive',     status: 'ok',      detail: 'Filing processed PDFs' },
-  { label: 'DYMO Bridge',      status: 'warning', detail: 'Check office PC' },
+
+
+const STATIC_SYSTEMS = [
+  { label: 'OneDrive Sync',    status: 'ok' as const, detail: 'Watching Scans folder' },
+  { label: 'Make.com Webhook', status: 'ok' as const, detail: 'Receiving page data' },
+  { label: 'Google Drive',     status: 'ok' as const, detail: 'Filing processed PDFs' },
 ];
+
+function getLabelDb() {
+  const cfg = {
+    apiKey:      import.meta.env.VITE_LABEL_FIREBASE_API_KEY      ?? '',
+    authDomain:  import.meta.env.VITE_LABEL_FIREBASE_AUTH_DOMAIN  ?? '',
+    databaseURL: import.meta.env.VITE_LABEL_FIREBASE_DATABASE_URL ?? '',
+    projectId:   import.meta.env.VITE_LABEL_FIREBASE_PROJECT_ID   ?? '',
+  };
+  if (!cfg.databaseURL) return null;
+  const app = getApps().find(a => a.name === 'grove-labels')
+    ?? initializeApp(cfg, 'grove-labels');
+  return getDatabase(app);
+}
 
 export default function DashboardHero() {
   const [dymoStatus, setDymoStatus] = useState<{ status: 'ok'|'warning'|'offline'; detail: string }>({
@@ -44,7 +58,7 @@ export default function DashboardHero() {
       setDymoStatus({ status: 'warning', detail: 'Firebase not configured' });
       return;
     }
-    const statusRef = ref(db, 'bridgeStatus');
+    const statusRef = dbRef(db, 'bridgeStatus');
     const unsub = onValue(statusRef, (snap) => {
       const data = snap.val();
       if (!data) {
@@ -206,7 +220,7 @@ export default function DashboardHero() {
             <div className="flex-shrink-0 rounded-2xl p-3" style={{ background: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <p className="font-mono text-[9px] uppercase tracking-wider mb-2" style={{ color: '#94a3b8' }}>System Health</p>
               <div className="grid grid-cols-2 gap-1.5">
-                {systemHealth.map(s => (
+                {systems.map(s => (
                   <div key={s.label} className="flex items-center gap-1.5 p-2 rounded-lg" style={{ background: '#f8fafc', border: '1px solid #f1f5f9' }}>
                     {s.status === 'ok' ? <CheckCircle2 className="w-3 h-3 flex-shrink-0" style={{ color: '#10b981' }} /> : <AlertCircle className="w-3 h-3 flex-shrink-0" style={{ color: '#f59e0b' }} />}
                     <div className="min-w-0">
