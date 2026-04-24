@@ -12,6 +12,7 @@
   ],
 
   "rewrites": [
+    { "source": "/api/birlea-confirm", "destination": "/birlea-ordering/api/birlea-confirm" },
     { "source": "/api/test-run",      "destination": "/pdf-router/api/test-run" },
     { "source": "/api/file-page",     "destination": "/pdf-router/api/file-page" },
     { "source": "/api/webhook",       "destination": "/pdf-router/api/webhook" },
