@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   Truck, MapPin, Package, User, Clock, ChevronRight,
   RefreshCw, AlertCircle, Route, Phone, FileText,
-  CheckCircle2, Circle, Loader2, Map, Users
+  CheckCircle2, Circle, Loader2, Users
 } from 'lucide-react';
 
 interface Stop {
@@ -256,7 +256,7 @@ export default function DispatchTracking() {
                                 {stop.recipientName || 'Unknown'}
                               </p>
                               <p className="font-inter text-xs truncate" style={{ color: '#64748b' }}>{stop.address}</p>
-                              {stop.orderRef && <p className="font-inter text-xs" style={{ color: '#94a3b8' }}>{stop.orderRef}</p>}
+                              {stop.orderInfo && <p className="font-inter text-xs" style={{ color: '#94a3b8' }}>{stop.orderInfo}</p>}
                             </div>
                             <span className="text-xs font-inter px-1.5 py-0.5 rounded-md flex-shrink-0"
                               style={{ background: sc.bg, color: sc.text }}>{stop.packageCount} pkg</span>
@@ -326,10 +326,10 @@ export default function DispatchTracking() {
 
                       <div className="space-y-3">
                         <p className="font-inter text-xs font-semibold uppercase tracking-wide" style={{ color: '#94a3b8' }}>Order</p>
-                        {selectedStop.orderRef && (
+                        {selectedStop.orderInfo && (
                           <div className="flex items-center gap-2">
                             <FileText className="w-4 h-4 flex-shrink-0" style={{ color: '#64748b' }} />
-                            <span className="font-inter text-sm font-medium" style={{ color: '#1e293b' }}>{selectedStop.orderRef}</span>
+                            <span className="font-inter text-sm font-medium" style={{ color: '#1e293b' }}>{selectedStop.orderInfo}</span>
                           </div>
                         )}
                         <div className="flex items-center gap-2">
