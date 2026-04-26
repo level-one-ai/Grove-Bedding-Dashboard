@@ -3,37 +3,35 @@
  * ─────────────────────────────────────────
  * GET /api/sales-orders
  *
- * Fetches open sales orders from Cin7 and filters to only those
+ * Fetches open sales orders from Cin7 Omni and filters to only those
  * that do not have an ETD (Estimated Time of Delivery) date set.
  *
- * The ETD field name is configured via ETD_FIELD_NAME env var.
- * If ETD_FIELD_NAME is blank, returns all open orders (so you can
- * browse them while you confirm the field name).
- *
- * Cron schedule: Mon-Fri 7:30am UTC
- * STATUS: INACTIVE — to activate, uncomment the cron entry in vercel.json
+ * Cin7 Omni uses Basic Auth: username + API key
+ * Base URL: https://api.cin7.com/api/v1
  *
  * Environment variables required:
- *   CIN7_API_KEY
- *   CIN7_API_USERNAME
- *   CIN7_BASE_URL
- *   ETD_FIELD_NAME  (optional — the field in Cin7 that holds the ETD date)
+ *   CIN7_API_KEY       — the API connection key from Cin7 Omni
+ *   CIN7_API_USERNAME  — the API username (e.g. GroveGroupScotlaUK)
+ *   ETD_FIELD_NAME     — (optional) field name in Cin7 that holds ETD date
  */
 
-function cin7Headers() {
+const CIN7_BASE = 'https://api.cin7.com/api/v1';
+
+function cin7Headers(apiUser, apiKey) {
+  const credentials = Buffer.from(`${apiUser}:${apiKey}`).toString('base64');
   return {
-    'api-auth-accountid':        process.env.CIN7_API_USERNAME ?? '',
-    'api-auth-applicationkey':   process.env.CIN7_API_KEY ?? '',
-    'Content-Type': 'application/json',
+    'Authorization': `Basic ${credentials}`,
+    'Content-Type':  'application/json',
+    'Accept':        'application/json',
   };
 }
 
 function formatLines(order) {
-  const lines = order.SaleOrderLines ?? order.Lines ?? [];
+  const lines = order.LineItems ?? order.Lines ?? order.SaleOrderLines ?? [];
   return lines.map(l => ({
-    productName: l.ProductName ?? l.Name ?? l.SKU ?? 'Unknown product',
-    qty: l.Quantity ?? l.Qty ?? 1,
-    sku: l.SKU ?? '',
+    productName: l.Name ?? l.ProductName ?? l.Description ?? l.SKU ?? 'Unknown product',
+    qty:         l.Quantity ?? l.Qty ?? 1,
+    sku:         l.SKU ?? l.Code ?? '',
   }));
 }
 
@@ -44,69 +42,68 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  const base       = process.env.CIN7_BASE_URL ?? 'https://inventory.dearsystems.com/ExternalApi/v2';
-  const etdField   = process.env.ETD_FIELD_NAME ?? '';
-  const apiKey     = process.env.CIN7_API_KEY;
-  const apiUser    = process.env.CIN7_API_USERNAME;
+  const apiKey  = process.env.CIN7_API_KEY;
+  const apiUser = process.env.CIN7_API_USERNAME;
+  const etdField = process.env.ETD_FIELD_NAME ?? '';
 
   if (!apiKey || !apiUser) {
     return res.status(200).json({
       success: false,
-      error: 'Cin7 credentials not configured. Set CIN7_API_KEY and CIN7_API_USERNAME in Vercel environment variables.',
+      error: 'Cin7 credentials not configured. Set CIN7_API_KEY and CIN7_API_USERNAME in Vercel.',
       orders: [],
     });
   }
 
   try {
-    // Fetch open sales orders from Cin7
-    // Status=AUTHORISED gets approved/confirmed orders
-    // Limit to 250 most recent
-    const url = `${base}/sale?Status=AUTHORISED&limit=250&page=1`;
-    console.log(`[sales-orders] Fetching from Cin7: ${url}`);
+    const headers = cin7Headers(apiUser, apiKey);
 
-    const cin7Res = await fetch(url, { headers: cin7Headers() });
+    // Cin7 Omni endpoint — fetch authorised/open sales orders
+    // stage=Placed gets confirmed orders awaiting fulfilment
+    const url = `${CIN7_BASE}/SalesOrders?stage=Authorised&limit=250&page=1`;
+    console.log(`[sales-orders] Fetching from Cin7 Omni: ${url}`);
+
+    const cin7Res = await fetch(url, { headers });
 
     if (!cin7Res.ok) {
       const errText = await cin7Res.text().catch(() => '');
-      throw new Error(`Cin7 API error: ${cin7Res.status} ${cin7Res.statusText} — ${errText.slice(0, 200)}`);
+      throw new Error(`Cin7 Omni API error: ${cin7Res.status} ${cin7Res.statusText} — ${errText.slice(0, 300)}`);
     }
 
     const data = await cin7Res.json();
-    const allOrders = data?.SaleList ?? data?.Sale ?? [];
 
-    console.log(`[sales-orders] Fetched ${allOrders.length} orders from Cin7`);
+    // Cin7 Omni returns array directly or wrapped in Data
+    const allOrders = Array.isArray(data) ? data : (data?.Data ?? data?.SalesOrders ?? []);
 
-    // Filter to orders missing ETD date
-    let missingEtd = allOrders;
+    console.log(`[sales-orders] Fetched ${allOrders.length} orders from Cin7 Omni`);
 
+    // Filter to orders missing ETD if field name configured
+    let filtered = allOrders;
     if (etdField) {
-      missingEtd = allOrders.filter(order => {
-        const etdValue = order[etdField];
-        return !etdValue || etdValue === '' || etdValue === null;
+      filtered = allOrders.filter(order => {
+        const val = order[etdField] ?? order.AdditionalAttributes?.[etdField];
+        return !val || val === '' || val === null;
       });
-      console.log(`[sales-orders] ${missingEtd.length} orders missing ETD (field: ${etdField})`);
-    } else {
-      console.log('[sales-orders] ETD_FIELD_NAME not set — returning all open orders');
+      console.log(`[sales-orders] ${filtered.length} orders missing ETD (field: ${etdField})`);
     }
 
-    // Map to a clean format for the dashboard
-    const orders = missingEtd.map(order => ({
-      id:           order.ID ?? order.SaleID ?? order.id ?? '',
-      orderNumber:  order.OrderNumber ?? order.SaleOrderNumber ?? order.Number ?? '',
-      customerName: order.Customer ?? order.CustomerName ?? order.ShipTo?.Contact ?? 'Unknown',
-      orderDate:    order.SaleOrderDate ?? order.Date ?? order.CreatedDate ?? '',
-      status:       order.Status ?? '',
-      totalAmount:  order.TotalAmount ?? order.Total ?? null,
-      currency:     order.Currency ?? 'GBP',
+    // Map to clean format for the dashboard
+    const orders = filtered.map(order => ({
+      id:           String(order.Id ?? order.ID ?? order.SalesOrderId ?? ''),
+      orderNumber:  String(order.Reference ?? order.OrderNumber ?? order.SalesOrderNumber ?? ''),
+      customerName: order.MemberEmail ?? order.BillingAddress?.Name ?? order.Company ?? order.MemberId ?? 'Unknown',
+      orderDate:    order.CreatedDate ?? order.OrderDate ?? order.Date ?? '',
+      status:       order.Stage ?? order.Status ?? '',
+      totalAmount:  order.Total ?? order.TotalAmount ?? null,
+      currency:     order.CurrencyCode ?? 'GBP',
       lines:        formatLines(order),
-    })).filter(o => o.id && o.orderNumber); // Remove any malformed records
+    })).filter(o => o.id && o.orderNumber);
 
     return res.status(200).json({
-      success: true,
-      count: orders.length,
-      total: allOrders.length,
-      etdField: etdField || null,
-      etdFieldNote: etdField ? null : 'ETD_FIELD_NAME not set — showing all open orders',
+      success:      true,
+      count:        orders.length,
+      total:        allOrders.length,
+      etdField:     etdField || null,
+      etdFieldNote: etdField ? null : 'ETD_FIELD_NAME not set — showing all authorised orders',
       orders,
     });
 
@@ -114,8 +111,8 @@ export default async function handler(req, res) {
     console.error('[sales-orders] Error:', err.message);
     return res.status(200).json({
       success: false,
-      error: err.message,
-      orders: [],
+      error:   err.message,
+      orders:  [],
     });
   }
 }
