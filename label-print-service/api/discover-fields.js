@@ -1,199 +1,140 @@
 /**
  * label-print-service/api/discover-fields.js
  * ────────────────────────────────────────────
- * Vercel serverless function — GET /api/discover-fields?orderId=XXXX
+ * GET /discover-fields?orderRef=YOUR-ORDER-NUMBER
  *
- * Use this to manually inspect every field Cin7 returns for a given order.
- * This is safe to call at any time — it never triggers a print job.
+ * Fetches a real Cin7 Omni order and returns every field it contains,
+ * highlighting which ones look like dates — so you can identify the ETD field.
  *
- * Usage:
- *   GET https://your-vercel-domain.vercel.app/api/discover-fields?orderId=12345
- *   GET https://your-vercel-domain.vercel.app/api/discover-fields?orderRef=5775-SH
+ * Usage (paste in browser or Postman):
+ *   https://your-dashboard.vercel.app/discover-fields?orderRef=SO-12345
  *
- * Returns a JSON object with:
- *   - allFields:        Every field from every Cin7 endpoint for this order
- *   - dateFields:       Only the fields that look like dates (most relevant for ETD)
- *   - etdCandidates:   Which known ETD field names had a value
- *   - customFields:     The AdditionalAttributes / custom fields section
- *   - recommendation:  Our best guess at the ETD field name
- *
- * Protected by the same WEBHOOK_SECRET header as the main webhook.
- * Add header: x-webhook-secret: your-secret-value
+ * Environment variables required:
+ *   CIN7_API_KEY
+ *   CIN7_API_USERNAME  (e.g. GroveGroupScotlaUK)
  */
 
-import { initializeApp, cert, getApps } from 'firebase-admin/app';
-import { getFirestore, FieldValue }      from 'firebase-admin/firestore';
+const CIN7_BASE = 'https://api.cin7.com/api/v1';
 
-const ETD_CANDIDATE_FIELDS = [
-  'ETD', 'Etd', 'ShipByDate', 'RequiredDate', 'PromisedDate',
-  'EstimatedDeliveryDate', 'DeliveryDate', 'ExpectedDeliveryDate',
-  'ShipDate', 'DueDate', 'DispatchDate', 'PlannedShipDate',
-  'PlannedDeliveryDate', 'ETA', 'Eta', 'ETDDate', 'EtdDate',
-  'etd', 'etd_date', 'CustomETD',
+const ETD_CANDIDATES = [
+  'RequiredShipDate', 'ShipByDate', 'ETD', 'Etd', 'DeliveryDate',
+  'EstimatedDeliveryDate', 'ExpectedDeliveryDate', 'PromisedDate',
+  'PlannedShipDate', 'PlannedDeliveryDate', 'DueDate', 'DispatchDate',
+  'ETA', 'Eta', 'etd', 'CustomETD', 'RequiredDate',
 ];
 
-function getDb() {
-  if (!getApps().length) {
-    initializeApp({
-      credential: cert({
-        projectId:   process.env.LABEL_FIREBASE_PROJECT_ID ?? process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.LABEL_FIREBASE_CLIENT_EMAIL ?? process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey:  process.env.LABEL_FIREBASE_PRIVATE_KEY ?? process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-      }),
-    });
-  }
-  return getFirestore();
-}
-
-function cin7Headers() {
-  const creds = Buffer.from(
-    `${process.env.CIN7_API_USERNAME}:${process.env.CIN7_API_KEY}`
-  ).toString('base64');
-  return { Authorization: `Basic ${creds}`, 'Content-Type': 'application/json' };
+function cin7Headers(apiUser, apiKey) {
+  const creds = Buffer.from(`${apiUser}:${apiKey}`).toString('base64');
+  return {
+    'Authorization': `Basic ${creds}`,
+    'Content-Type':  'application/json',
+    'Accept':        'application/json',
+  };
 }
 
 function extractDateFields(obj, prefix = '') {
   const dates = {};
   if (!obj || typeof obj !== 'object') return dates;
   for (const [k, v] of Object.entries(obj)) {
-    const fullKey = prefix ? `${prefix}.${k}` : k;
+    const key = prefix ? `${prefix}.${k}` : k;
     if (typeof v === 'string' && /\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4}/.test(v)) {
-      dates[fullKey] = v;
-    } else if (typeof v === 'object' && v !== null && !Array.isArray(v)) {
-      Object.assign(dates, extractDateFields(v, fullKey));
+      dates[key] = v;
+    } else if (v && typeof v === 'object' && !Array.isArray(v)) {
+      Object.assign(dates, extractDateFields(v, key));
     }
   }
   return dates;
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed — use GET' });
-  }
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Use GET' });
 
-  // Auth check
-  const secret = req.headers['x-webhook-secret'];
-  if (process.env.WEBHOOK_SECRET && secret !== process.env.WEBHOOK_SECRET) {
-    return res.status(401).json({ error: 'Unauthorized — add header: x-webhook-secret' });
-  }
+  const apiKey  = process.env.CIN7_API_KEY;
+  const apiUser = process.env.CIN7_API_USERNAME;
 
-  const { orderId, orderRef } = req.query;
-  if (!orderId && !orderRef) {
-    return res.status(400).json({
-      error: 'Provide either ?orderId=XXX or ?orderRef=XXX',
-      example: '/api/discover-fields?orderId=12345',
+  if (!apiKey || !apiUser) {
+    return res.status(500).json({
+      error: 'CIN7_API_KEY and CIN7_API_USERNAME not set in Vercel environment variables',
     });
   }
 
-  const base    = process.env.CIN7_BASE_URL;
-  const headers = cin7Headers();
+  const { orderRef, orderId } = req.query;
+  if (!orderRef && !orderId) {
+    return res.status(400).json({
+      error: 'Provide ?orderRef=YOUR-ORDER-REF or ?orderId=123',
+      example: '/discover-fields?orderRef=SO-12345',
+    });
+  }
+
+  const headers = cin7Headers(apiUser, apiKey);
 
   try {
-    // Build lookup URL
-    const lookupUrl = orderId
-      ? `${base}/sale?ID=${orderId}`
-      : `${base}/sale?SaleOrderNumber=${orderRef}`;
+    // Fetch the order from Cin7 Omni
+    let order;
+    if (orderId) {
+      const r = await fetch(`${CIN7_BASE}/SalesOrders/${orderId}`, { headers });
+      const d = await r.json();
+      order = Array.isArray(d) ? d[0] : (d?.Data ?? d);
+    } else {
+      const r = await fetch(
+        `${CIN7_BASE}/SalesOrders?where=reference="${encodeURIComponent(orderRef)}"&limit=1`,
+        { headers }
+      );
+      const d = await r.json();
+      order = Array.isArray(d) ? d[0] : (d?.Data?.[0] ?? d?.[0] ?? d);
+    }
 
-    const primaryRes  = await fetch(lookupUrl, { headers });
-    if (!primaryRes.ok) {
-      return res.status(502).json({
-        error: `Cin7 API error: ${primaryRes.status} ${primaryRes.statusText}`,
-        hint: 'Check your CIN7_API_KEY, CIN7_API_USERNAME and CIN7_BASE_URL env vars',
+    if (!order || (!order.Id && !order.ID)) {
+      return res.status(404).json({
+        error: 'Order not found in Cin7 Omni',
+        hint: 'Check the order reference is correct and the API credentials have read permission on Sales Orders',
       });
     }
 
-    const primaryData = await primaryRes.json();
-    const order       = primaryData.SaleList?.[0] ?? primaryData;
-    const resolvedId  = order.ID ?? order.SaleID ?? orderId;
-    const resolvedRef = order.SaleOrderNumber ?? orderRef;
-
-    // Fetch all endpoints
-    const endpoints = [
-      { key: 'sale',            url: `${base}/sale?ID=${resolvedId}` },
-      { key: 'saleOrder',       url: `${base}/saleOrder?ID=${resolvedId}` },
-      { key: 'saleFulfillment', url: `${base}/saleFulfillment?SaleID=${resolvedId}` },
-      { key: 'saleInvoice',     url: `${base}/saleInvoice?SaleID=${resolvedId}` },
-      { key: 'saleShipment',    url: `${base}/saleShipment?SaleID=${resolvedId}` },
-    ];
-
-    const allEndpoints = {};
-    for (const ep of endpoints) {
-      try {
-        const r    = await fetch(ep.url, { headers });
-        const json = await r.json();
-        allEndpoints[ep.key] = r.ok
-          ? (Array.isArray(json) ? json[0] : (json.SaleList?.[0] ?? json.SaleOrderList?.[0] ?? json))
-          : { _error: `${r.status} ${r.statusText}` };
-      } catch (e) {
-        allEndpoints[ep.key] = { _error: e.message };
-      }
-    }
-
     // Find all date fields
-    const dateFields = {
-      ...extractDateFields(order, 'sale'),
-      ...Object.entries(allEndpoints).reduce((acc, [ep, data]) => ({
-        ...acc,
-        ...extractDateFields(data, ep),
-      }), {}),
-    };
+    const dateFields = extractDateFields(order);
 
-    // Find ETD candidates
+    // Check which ETD candidates have values
     const etdCandidates = {};
-    for (const field of ETD_CANDIDATE_FIELDS) {
+    for (const field of ETD_CANDIDATES) {
       const val = order[field] ?? order.AdditionalAttributes?.[field];
       if (val !== undefined && val !== null && val !== '') {
-        etdCandidates[field] = { value: val, source: order[field] ? 'top_level' : 'AdditionalAttributes' };
+        etdCandidates[field] = { value: val };
       }
     }
 
-    // Best recommendation
-    let recommendation = null;
+    // Recommendation
+    let recommendation;
     if (Object.keys(etdCandidates).length > 0) {
-      const bestField = Object.keys(etdCandidates)[0];
+      const best = Object.keys(etdCandidates)[0];
       recommendation = {
-        fieldName: bestField,
-        value: etdCandidates[bestField].value,
-        action: `Set ETD_FIELD_NAME=${bestField} in your Vercel environment variables`,
+        fieldName: best,
+        currentValue: etdCandidates[best].value,
+        action: `Set ETD_FIELD_NAME=${best} in your Vercel environment variables`,
       };
     } else if (Object.keys(dateFields).length > 0) {
       recommendation = {
-        message: 'No known ETD field names matched. Review the dateFields list below and identify the correct one, then set ETD_FIELD_NAME in Vercel.',
-        dateFieldsFound: dateFields,
+        message: 'No standard ETD field names matched. Review the dateFields list below and identify which one is your ETD date, then set ETD_FIELD_NAME in Vercel.',
+        hint: 'Look for a field named something like DeliveryDate, ShipByDate, or RequiredDate',
       };
     } else {
       recommendation = {
-        message: 'No date fields found at all. The order may not have an ETD set yet, or it may be in a non-standard format.',
+        message: 'No date fields found. This order may not have a delivery date set yet. Try an order that has one.',
       };
     }
 
-    // Save discovery result to Firestore
-    const db = getDb();
-    await db.collection('cin7FieldDiscovery').add({
-      type:          'manual_discovery',
-      orderId:       resolvedId,
-      orderRef:      resolvedRef,
-      scannedAt:     FieldValue.serverTimestamp(),
-      etdCandidates,
-      dateFields,
-      recommendation,
-    });
-
     return res.status(200).json({
-      orderId:        resolvedId,
-      orderRef:       resolvedRef,
+      orderReference:    order.Reference ?? order.OrderNumber ?? orderRef,
+      orderId:           order.Id ?? order.ID,
       recommendation,
       etdCandidates,
       dateFields,
-      customFields:   order.AdditionalAttributes ?? {},
+      customFields:      order.AdditionalAttributes ?? {},
       allTopLevelFields: Object.keys(order),
-      allEndpointKeys: Object.fromEntries(
-        Object.entries(allEndpoints).map(([ep, data]) => [ep, data ? Object.keys(data) : []])
-      ),
     });
 
   } catch (err) {
-    console.error('[discover-fields]', err);
+    console.error('[discover-fields]', err.message);
     return res.status(500).json({ error: err.message });
   }
 }

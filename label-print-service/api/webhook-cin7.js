@@ -14,8 +14,7 @@
  * Environment variables required:
  *   CIN7_API_KEY          - Cin7 API key
  *   CIN7_API_USERNAME     - Cin7 API username
- *   CIN7_BASE_URL         - e.g. https://inventory.dearsystems.com/ExternalApi/v2
- *   LABEL_FIREBASE_PROJECT_ID
+  *   LABEL_FIREBASE_PROJECT_ID
  *   LABEL_FIREBASE_CLIENT_EMAIL
  *   LABEL_FIREBASE_PRIVATE_KEY
  *   WEBHOOK_SECRET        - optional shared secret for webhook validation
@@ -46,40 +45,44 @@ function getDb() {
 // ── Cin7 API helpers ──────────────────────────────────────────────────────────
 
 function cin7Headers() {
+  const creds = Buffer.from(
+    `${process.env.CIN7_API_USERNAME}:${process.env.CIN7_API_KEY}`
+  ).toString('base64');
   return {
-    'api-auth-accountid': process.env.CIN7_API_USERNAME ?? '',
-    'api-auth-applicationkey': process.env.CIN7_API_KEY ?? '',
+    'Authorization': `Basic ${creds}`,
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
   };
 }
 
 async function fetchOrderFromCin7(orderId) {
-  const base = process.env.CIN7_BASE_URL ?? 'https://inventory.dearsystems.com/ExternalApi/v2';
-  const url = `${base}/sale?ID=${encodeURIComponent(orderId)}`;
+  // Cin7 Omni API — fetch a sales order by ID
+  const url = `https://api.cin7.com/api/v1/SalesOrders/${encodeURIComponent(orderId)}`;
 
   const res = await fetch(url, { headers: cin7Headers() });
   if (!res.ok) {
-    throw new Error(`Cin7 GET failed: ${res.status} ${res.statusText}`);
+    throw new Error(`Cin7 Omni GET failed: ${res.status} ${res.statusText}`);
   }
   const data = await res.json();
-  // Cin7 returns { SaleList: [...] } or { Sale: {...} } depending on endpoint
-  return data?.Sale ?? data?.SaleList?.[0] ?? data;
+  // Cin7 Omni returns array or wrapped in Data
+  if (Array.isArray(data)) return data[0];
+  return data?.Data ?? data;
 }
 
 // ── Order data → label fields ─────────────────────────────────────────────────
 
 function buildLabelData(order, labelIndex = 0, totalLabels = 1) {
-  // Customer / delivery contact
-  const shipTo = order.ShipTo ?? {};
+  // Cin7 Omni field names
+  const shipTo = order.ShippingAddress ?? order.DeliveryAddress ?? {};
   const customerName = [
-    shipTo.Contact ?? order.CustomerName ?? '',
+    shipTo.Name ?? order.MemberEmail ?? '',
     shipTo.Company ?? '',
-  ].filter(Boolean).join(', ') || order.CustomerName ?? 'Unknown';
+  ].filter(Boolean).join(', ') || order.Company ?? 'Unknown';
 
-  // Delivery address — build a single line
+  // Delivery address
   const addressParts = [
-    shipTo.Address1,
-    shipTo.Address2,
+    shipTo.Line1 ?? shipTo.Address1,
+    shipTo.Line2 ?? shipTo.Address2,
     shipTo.City,
     shipTo.State,
     shipTo.Country,
@@ -88,7 +91,7 @@ function buildLabelData(order, labelIndex = 0, totalLabels = 1) {
   const address = addressParts.join(', ');
 
   // Order reference
-  const orderRef = order.OrderNumber ?? order.SaleOrderNumber ?? order.ID ?? '';
+  const orderRef = order.Reference ?? order.OrderNumber ?? order.Id ?? '';
 
   // ETD / delivery date
   let deliveryDate = '';
@@ -103,18 +106,18 @@ function buildLabelData(order, labelIndex = 0, totalLabels = 1) {
     }
   }
 
-  // Line items
-  const lines = (order.SaleOrderLines ?? order.Lines ?? [])
-    .filter(l => l.ProductName || l.Name);
+  // Cin7 Omni line items
+  const lines = (order.LineItems ?? order.Lines ?? order.SaleOrderLines ?? [])
+    .filter(l => l.Name ?? l.ProductName);
 
   const firstLine  = lines[0] ?? {};
   const secondLine = lines[1] ?? {};
   const thirdLine  = lines[2] ?? {};
 
-  const productName = firstLine.ProductName ?? firstLine.Name ?? '';
-  const productSize = firstLine.AdditionalAttribute1 ?? firstLine.Unit ?? '';
-  const extraLine1  = secondLine.ProductName ?? secondLine.Name ?? '';
-  const extraLine2  = thirdLine.ProductName  ?? thirdLine.Name  ?? '';
+  const productName = firstLine.Name ?? firstLine.ProductName ?? '';
+  const productSize = firstLine.Option1 ?? firstLine.Unit ?? '';
+  const extraLine1  = secondLine.Name ?? secondLine.ProductName ?? '';
+  const extraLine2  = thirdLine.Name  ?? thirdLine.ProductName  ?? '';
 
   // Parcel count
   const parcelCount = `${labelIndex + 1}/${totalLabels}`;
@@ -155,8 +158,8 @@ export default async function handler(req, res) {
     try { body = JSON.parse(body); } catch { body = {}; }
   }
 
-  // Cin7 sends the order ID in various fields depending on webhook type
-  const orderId = body?.ID ?? body?.SaleID ?? body?.OrderID ?? body?.id ?? body?.saleId;
+  // Cin7 Omni webhook sends order ID in various fields
+  const orderId = body?.Id ?? body?.ID ?? body?.SalesOrderId ?? body?.OrderId ?? body?.id;
 
   if (!orderId) {
     console.error('[webhook-cin7] No order ID in payload:', JSON.stringify(body));
