@@ -1,558 +1,416 @@
-import { useEffect, useRef, useState } from 'react';
-import { gsap } from 'gsap';
-import { Truck, Clock, MapPin, Package, User, FileText, Box, ChevronRight, Navigation } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useEffect, useState, useCallback } from 'react';
+import {
+  Truck, MapPin, Package, User, Clock, ChevronRight,
+  RefreshCw, AlertCircle, Route, Phone, FileText,
+  CheckCircle2, Circle, Loader2, Map, Users
+} from 'lucide-react';
 
-interface Dispatch {
+interface Stop {
   id: string;
-  orderRef: string;
-  client: {
-    name: string;
-    address: string;
-    phone: string;
-  };
-  items: { name: string; quantity: number; sku: string }[];
-  route: {
-    from: string;
-    to: string;
-    distance: string;
-    estimatedTime: string;
-  };
-  driver: {
-    name: string;
-    vehicle: string;
-    phone: string;
-  };
-  status: 'preparing' | 'in-transit' | 'delivered';
-  dispatchTime: string;
-  eta: string;
-  progress: number;
+  position: number;
+  status: string;
+  recipientName: string;
+  recipientPhone: string | null;
+  recipientEmail: string | null;
+  recipientNotes: string | null;
+  address: string;
+  address2: string;
+  city: string;
+  postcode: string;
+  country: string;
+  coordinates: { lat: number; lng: number } | null;
+  packageCount: number;
+  orderInfo: string | null;
+  notes: string | null;
+  customFields: Record<string, unknown>;
+  scheduledAt: string | null;
+  completedAt: string | null;
+  route: string | null;
+}
+interface Plan {
+  id: string;
+  title: string;
+  date: string | null;
+  startTime: string | null;
+  status: string;
+  stopCount: number;
+  routeCount: number;
+  drivers: string[];
+  depot: string | null;
 }
 
-const dispatches: Dispatch[] = [
-  {
-    id: 'DSP-001',
-    orderRef: 'SO-1020',
-    client: {
-      name: 'Acme Furniture Co.',
-      address: '123 Industrial Way, Warehouse District, NY 10001',
-      phone: '+1 (555) 123-4567',
-    },
-    items: [
-      { name: 'Memory Foam Mattress - Queen', quantity: 5, sku: 'SKU-001' },
-      { name: 'Luxury Bed Sheets - King', quantity: 10, sku: 'SKU-003' },
-      { name: 'Down Alternative Pillow', quantity: 15, sku: 'SKU-004' },
-    ],
-    route: {
-      from: 'Grove Bedding Warehouse',
-      to: 'Acme Furniture Co.',
-      distance: '24.5 miles',
-      estimatedTime: '45 mins',
-    },
-    driver: {
-      name: 'Mike Johnson',
-      vehicle: 'Truck #TR-204',
-      phone: '+1 (555) 987-6543',
-    },
-    status: 'in-transit',
-    dispatchTime: '09:30 AM',
-    eta: '10:15 AM',
-    progress: 65,
-  },
-  {
-    id: 'DSP-002',
-    orderRef: 'SO-1021',
-    client: {
-      name: 'SleepWell Retailers',
-      address: '456 Commerce St, Business Park, NJ 07030',
-      phone: '+1 (555) 234-5678',
-    },
-    items: [
-      { name: 'Pillow Top Queen Mattress', quantity: 3, sku: 'SKU-002' },
-      { name: 'Weighted Blanket - 15lb', quantity: 8, sku: 'SKU-005' },
-      { name: 'Mattress Protector', quantity: 12, sku: 'SKU-006' },
-    ],
-    route: {
-      from: 'Grove Bedding Warehouse',
-      to: 'SleepWell Retailers',
-      distance: '18.2 miles',
-      estimatedTime: '35 mins',
-    },
-    driver: {
-      name: 'Sarah Chen',
-      vehicle: 'Van #VN-118',
-      phone: '+1 (555) 876-5432',
-    },
-    status: 'preparing',
-    dispatchTime: '10:00 AM',
-    eta: '10:35 AM',
-    progress: 20,
-  },
-  {
-    id: 'DSP-003',
-    orderRef: 'SO-1018',
-    client: {
-      name: 'Comfort Home Store',
-      address: '789 Market Ave, Downtown, NY 10002',
-      phone: '+1 (555) 345-6789',
-    },
-    items: [
-      { name: 'Memory Foam Mattress - Twin', quantity: 8, sku: 'SKU-001' },
-      { name: 'Luxury Bed Sheets - Queen', quantity: 20, sku: 'SKU-003' },
-    ],
-    route: {
-      from: 'Grove Bedding Warehouse',
-      to: 'Comfort Home Store',
-      distance: '12.8 miles',
-      estimatedTime: '25 mins',
-    },
-    driver: {
-      name: 'David Martinez',
-      vehicle: 'Truck #TR-201',
-      phone: '+1 (555) 765-4321',
-    },
-    status: 'delivered',
-    dispatchTime: '08:15 AM',
-    eta: '08:40 AM',
-    progress: 100,
-  },
-  {
-    id: 'DSP-004',
-    orderRef: 'SO-1022',
-    client: {
-      name: 'Dream Sleep Outlet',
-      address: '321 Bedding Blvd, Retail Center, NJ 07102',
-      phone: '+1 (555) 456-7890',
-    },
-    items: [
-      { name: 'Pillow Top King Mattress', quantity: 2, sku: 'SKU-002' },
-      { name: 'Down Alternative Pillow', quantity: 24, sku: 'SKU-004' },
-      { name: 'Weighted Blanket - 20lb', quantity: 6, sku: 'SKU-005' },
-    ],
-    route: {
-      from: 'Grove Bedding Warehouse',
-      to: 'Dream Sleep Outlet',
-      distance: '31.4 miles',
-      estimatedTime: '55 mins',
-    },
-    driver: {
-      name: 'Lisa Thompson',
-      vehicle: 'Truck #TR-205',
-      phone: '+1 (555) 654-3210',
-    },
-    status: 'in-transit',
-    dispatchTime: '09:45 AM',
-    eta: '10:40 AM',
-    progress: 40,
-  },
-];
-
-const columns = [
-  {
-    label: 'Preparing',
-    status: 'preparing' as const,
-    color: '#f59e0b',
-    colorLight: '#fffbeb',
-    colorBorder: '#fde68a',
-  },
-  {
-    label: 'In Transit',
-    status: 'in-transit' as const,
-    color: '#3b82f6',
-    colorLight: '#eff6ff',
-    colorBorder: '#bfdbfe',
-  },
-  {
-    label: 'Delivered',
-    status: 'delivered' as const,
-    color: '#22c55e',
-    colorLight: '#f0fdf4',
-    colorBorder: '#bbf7d0',
-  },
-];
+function statusColour(status: string) {
+  switch (status?.toLowerCase()) {
+    case 'success': case 'completed': case 'delivered':
+      return { bg: '#f0fdf4', text: '#16a34a', dot: '#22c55e' };
+    case 'inprogress': case 'in_progress': case 'in-progress': case 'active':
+      return { bg: '#eff6ff', text: '#2563eb', dot: '#3b82f6' };
+    case 'failed': case 'cancelled':
+      return { bg: '#fef2f2', text: '#dc2626', dot: '#ef4444' };
+    default:
+      return { bg: '#f8fafc', text: '#64748b', dot: '#94a3b8' };
+  }
+}
+function formatDate(iso: string | null) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+function formatTime(iso: string | null) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
 
 export default function DispatchTracking() {
-  const sectionRef = useRef<HTMLDivElement>(null);
-  const [selectedDispatch, setSelectedDispatch] = useState<Dispatch | null>(null);
-  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [plans, setPlans]               = useState<Plan[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState<string | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+  const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
+  const [refreshing, setRefreshing]     = useState(false);
 
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        sectionRef.current,
-        { opacity: 0, y: 12 },
-        { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }
-      );
-    }, sectionRef);
+  const [stops, setStops]                 = useState<Stop[]>([]);
+  const [stopsLoading, setStopsLoading]   = useState(false);
 
-    return () => ctx.revert();
+  const fetchPlans = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true); else setLoading(true);
+    setError(null);
+    try {
+      const res  = await fetch('/api/spoke-plans');
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error ?? 'Failed to load plans');
+      setPlans(data.plans ?? []);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally { setLoading(false); setRefreshing(false); }
   }, []);
 
-  const handleCardClick = (dispatch: Dispatch) => {
-    setSelectedDispatch(dispatch);
-    setDetailDialogOpen(true);
+  const fetchStops = useCallback(async (plan: Plan) => {
+    setStopsLoading(true);
+    setStops([]);
+    setSelectedStop(null);
+    try {
+      const res  = await fetch(`/api/spoke-stops?planId=${encodeURIComponent(plan.id)}`);
+      const data = await res.json();
+      setStops(data.stops ?? []);
+    } catch (err: unknown) {
+      console.error('Failed to load stops:', err);
+    } finally { setStopsLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchPlans(); }, []);
+
+  // Auto-select first plan and load its stops
+  useEffect(() => {
+    if (plans.length > 0 && !selectedPlan) {
+      setSelectedPlan(plans[0]);
+      fetchStops(plans[0]);
+    }
+  }, [plans]);
+
+  const totalStops     = plans.reduce((n, p) => n + (p.stopCount ?? 0), 0);
+  const totalDelivered = stops.filter(s => ['success','completed','delivered'].includes(s.status?.toLowerCase())).length;
+  const totalDrivers   = plans.reduce((n, p) => n + (p.drivers?.length ?? 0), 0);
+
+  // Find stops in the same postcode area for route combining
+  const nearbyStops = (stop: Stop) => {
+    const postcode = stop.postcode?.match(/[A-Z]{1,2}\d{1,2}/)?.[0];
+    if (!postcode) return [];
+    return stops.filter(s => s.id !== stop.id && s.postcode?.includes(postcode));
   };
 
   return (
-    <div
-      id="dispatch"
-      ref={sectionRef}
-      className="relative w-full h-full overflow-hidden"
-      style={{ background: '#ffffff' }}
-    >
-      {/* Subtle dot grid */}
-      <div
-        className="absolute inset-0 opacity-[0.5]"
-        style={{
-          backgroundImage: `radial-gradient(circle, #cbd5e1 1px, transparent 1px)`,
-          backgroundSize: '28px 28px',
-        }}
-      />
-
-      <div className="relative z-10 h-full flex flex-col max-w-6xl mx-auto px-8 py-4">
+    <div className="relative flex flex-col h-full" style={{ background: '#ffffff' }}>
+      <div className="relative z-10 h-full flex flex-col max-w-7xl mx-auto px-8 py-4">
 
         {/* Header */}
-        <div className="mb-3 flex items-center gap-3 flex-shrink-0">
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center"
-            style={{ background: '#eff6ff', border: '1px solid #bfdbfe' }}
-          >
-            <Navigation className="w-5 h-5" style={{ color: '#3b82f6' }} />
+        <div className="mb-3 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}>
+              <Truck className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h2 className="font-sora font-bold text-xl" style={{ color: '#1e293b' }}>Dispatch Tracking</h2>
+              <p className="font-inter text-xs" style={{ color: '#64748b' }}>Spoke Dispatch · Live delivery plans</p>
+            </div>
           </div>
-          <div>
-            <h2 className="font-sora font-bold text-xl" style={{ color: '#1e293b' }}>
-              Dispatch
-            </h2>
-            <p className="font-inter text-xs" style={{ color: '#64748b' }}>
-              Real-time monitoring of all delivery routes and ETAs
-            </p>
-          </div>
+          <button onClick={() => fetchPlans(true)} disabled={refreshing}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-inter font-medium"
+            style={{ background: '#f1f5f9', color: '#475569' }}>
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
         </div>
 
-        {/* Stats Overview */}
+        {/* Stats */}
         <div className="grid grid-cols-4 gap-3 mb-4 flex-shrink-0">
-          <div className="glass-card p-3 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#eff6ff' }}>
-              <Truck className="w-4 h-4" style={{ color: '#3b82f6' }} />
-            </div>
-            <div>
-              <p className="font-sora font-bold text-xl" style={{ color: '#1e293b' }}>4</p>
-              <p className="font-inter text-xs" style={{ color: '#64748b' }}>Active Dispatches</p>
-            </div>
-          </div>
-
-          <div className="glass-card p-3 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#f0fdf4' }}>
-              <Clock className="w-4 h-4" style={{ color: '#22c55e' }} />
-            </div>
-            <div>
-              <p className="font-sora font-bold text-xl" style={{ color: '#1e293b' }}>2</p>
-              <p className="font-inter text-xs" style={{ color: '#64748b' }}>On Schedule</p>
-            </div>
-          </div>
-
-          <div className="glass-card p-3 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#f0f9ff' }}>
-              <MapPin className="w-4 h-4" style={{ color: '#0ea5e9' }} />
-            </div>
-            <div>
-              <p className="font-sora font-bold text-xl" style={{ color: '#1e293b' }}>86.9</p>
-              <p className="font-inter text-xs" style={{ color: '#64748b' }}>Total Miles Today</p>
-            </div>
-          </div>
-
-          <div className="glass-card p-3 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#faf5ff' }}>
-              <Package className="w-4 h-4" style={{ color: '#8b5cf6' }} />
-            </div>
-            <div>
-              <p className="font-sora font-bold text-xl" style={{ color: '#1e293b' }}>113</p>
-              <p className="font-inter text-xs" style={{ color: '#64748b' }}>Items Delivered</p>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Kanban Board: 3 status columns ── */}
-        <div className="grid grid-cols-3 gap-4 flex-1 min-h-0">
-          {columns.map((col) => {
-            const colDispatches = dispatches.filter(d => d.status === col.status);
-            return (
-              <div key={col.status} className="flex flex-col min-h-0">
-                {/* Column Header */}
-                <div
-                  className="flex items-center justify-between px-3 py-2 rounded-xl mb-3 flex-shrink-0"
-                  style={{
-                    background: col.colorLight,
-                    borderLeft: `3px solid ${col.color}`,
-                    border: `1px solid ${col.colorBorder}`,
-                    borderLeftWidth: '3px',
-                  }}
-                >
-                  <span className="font-sora font-semibold text-sm" style={{ color: col.color }}>
-                    {col.label}
-                  </span>
-                  <span
-                    className="font-mono text-xs px-2 py-0.5 rounded-lg"
-                    style={{ background: col.colorBorder, color: col.color }}
-                  >
-                    {colDispatches.length}
-                  </span>
-                </div>
-
-                {/* Cards */}
-                <div className="flex flex-col gap-3 overflow-y-auto flex-1 min-h-0">
-                  {colDispatches.length === 0 && (
-                    <div
-                      className="rounded-2xl p-6 text-center"
-                      style={{ border: `2px dashed ${col.colorBorder}` }}
-                    >
-                      <p className="font-inter text-xs" style={{ color: '#94a3b8' }}>No dispatches</p>
-                    </div>
-                  )}
-                  {colDispatches.map((dispatch) => (
-                    <div
-                      key={dispatch.id}
-                      onClick={() => handleCardClick(dispatch)}
-                      className="glass-card p-4 cursor-pointer hover:shadow-md transition-all duration-300 group"
-                    >
-                      {/* Reference row */}
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-mono text-[10px]" style={{ color: '#94a3b8' }}>{dispatch.id}</span>
-                        <span
-                          className="font-mono text-[10px] px-2 py-0.5 rounded-lg"
-                          style={{ background: `${col.color}15`, color: col.color }}
-                        >
-                          {dispatch.orderRef}
-                        </span>
-                      </div>
-
-                      {/* Client name */}
-                      <h3
-                        className="font-sora font-semibold text-sm mb-1 group-hover:transition-colors"
-                        style={{ color: '#1e293b' }}
-                      >
-                        {dispatch.client.name}
-                      </h3>
-
-                      {/* Items count */}
-                      <p className="font-inter text-xs mb-3" style={{ color: '#94a3b8' }}>
-                        {dispatch.items.length} item type{dispatch.items.length > 1 ? 's' : ''} ·{' '}
-                        {dispatch.items.reduce((s, i) => s + i.quantity, 0)} units
-                      </p>
-
-                      {/* Progress */}
-                      <div className="mb-3">
-                        <div className="flex justify-between mb-1">
-                          <span className="font-mono text-[10px]" style={{ color: '#94a3b8' }}>Progress</span>
-                          <span className="font-mono text-[10px]" style={{ color: col.color }}>{dispatch.progress}%</span>
-                        </div>
-                        <div className="progress-bar h-1.5" style={{ background: `${col.color}18` }}>
-                          <div
-                            className="h-full rounded-full"
-                            style={{
-                              width: `${dispatch.progress}%`,
-                              background: `linear-gradient(90deg, ${col.color} 0%, ${col.color}cc 100%)`,
-                            }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Distance + ETA */}
-                      <div className="flex items-center gap-3 mb-3" style={{ color: '#94a3b8' }}>
-                        <div className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          <span className="font-inter text-[10px]">{dispatch.route.distance}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          <span className="font-inter text-[10px]">ETA {dispatch.eta}</span>
-                        </div>
-                      </div>
-
-                      {/* Driver */}
-                      <div
-                        className="flex items-center gap-2 pt-2"
-                        style={{ borderTop: '1px solid #f1f5f9' }}
-                      >
-                        <Truck className="w-3 h-3" style={{ color: '#cbd5e1' }} />
-                        <span className="font-inter text-[10px] truncate" style={{ color: '#64748b' }}>
-                          {dispatch.driver.name} · {dispatch.driver.vehicle}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+          {[
+            { icon: <Route className="w-4 h-4" style={{ color: '#3b82f6' }} />, bg: '#eff6ff', value: plans.length, label: 'Active Plans' },
+            { icon: <MapPin className="w-4 h-4" style={{ color: '#8b5cf6' }} />, bg: '#f5f3ff', value: totalStops, label: 'Total Stops' },
+            { icon: <CheckCircle2 className="w-4 h-4" style={{ color: '#16a34a' }} />, bg: '#f0fdf4', value: totalDelivered, label: 'Delivered' },
+            { icon: <Users className="w-4 h-4" style={{ color: '#f59e0b' }} />, bg: '#fffbeb', value: totalDrivers, label: 'Drivers Active' },
+          ].map((s, i) => (
+            <div key={i} className="glass-card p-3 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: s.bg }}>{s.icon}</div>
+              <div>
+                <p className="font-sora font-bold text-xl" style={{ color: '#1e293b' }}>{s.value}</p>
+                <p className="font-inter text-xs" style={{ color: '#64748b' }}>{s.label}</p>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
-      </div>
 
-      {/* Detail Dialog */}
-      <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent
-          className="max-w-2xl max-h-[90vh] overflow-y-auto"
-          style={{ background: '#ffffff', border: '1px solid #e2e8f0' }}
-        >
-          {selectedDispatch && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="font-sora font-bold text-xl" style={{ color: '#1e293b' }}>
-                  <div className="flex items-center gap-3">
-                    <Truck className="w-6 h-6" style={{ color: '#3b82f6' }} />
-                    {selectedDispatch.id}
-                  </div>
-                </DialogTitle>
-              </DialogHeader>
+        {/* States */}
+        {loading && (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#3b82f6' }} />
+              <p className="font-inter text-sm" style={{ color: '#64748b' }}>Loading delivery plans from Spoke...</p>
+            </div>
+          </div>
+        )}
+        {!loading && error && (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="glass-card p-6 max-w-md text-center">
+              <AlertCircle className="w-10 h-10 mx-auto mb-3" style={{ color: '#ef4444' }} />
+              <p className="font-sora font-semibold mb-1" style={{ color: '#1e293b' }}>Could not load Spoke plans</p>
+              <p className="font-inter text-sm mb-4" style={{ color: '#64748b' }}>{error}</p>
+              {error.includes('SPOKE_API_KEY') && (
+                <p className="font-inter text-xs p-3 rounded-lg" style={{ background: '#f8fafc', color: '#64748b' }}>
+                  Add SPOKE_API_KEY to Vercel environment variables.<br />
+                  Get it from Spoke Dispatch → Settings → Integrations → API
+                </p>
+              )}
+              <button onClick={() => fetchPlans()} className="mt-4 px-4 py-2 rounded-lg text-sm font-inter font-medium text-white"
+                style={{ background: '#3b82f6' }}>Try again</button>
+            </div>
+          </div>
+        )}
+        {!loading && !error && plans.length === 0 && (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <Truck className="w-12 h-12 mx-auto mb-3" style={{ color: '#e2e8f0' }} />
+              <p className="font-sora font-semibold" style={{ color: '#1e293b' }}>No delivery plans today</p>
+              <p className="font-inter text-sm mt-1" style={{ color: '#64748b' }}>Plans created in Spoke Dispatch will appear here</p>
+            </div>
+          </div>
+        )}
 
-              <div className="mt-4 space-y-4">
-                {/* Status Banner */}
-                {(() => {
-                  const col = columns.find(c => c.status === selectedDispatch.status)!;
+        {/* Two-column layout */}
+        {!loading && !error && plans.length > 0 && (
+          <div className="flex gap-4 flex-1 min-h-0">
+
+            {/* LEFT — list */}
+            <div className="flex flex-col gap-3 w-72 flex-shrink-0">
+              {/* Plan selector */}
+              <div className="glass-card p-2 flex-shrink-0">
+                <p className="font-inter text-xs px-1 mb-1.5" style={{ color: '#94a3b8' }}>DELIVERY PLANS</p>
+                {plans.map(plan => {
+                  const sc = statusColour(plan.status);
+                  const isSel = selectedPlan?.id === plan.id;
                   return (
-                    <div
-                      className="p-4 rounded-xl"
-                      style={{ background: col.colorLight, border: `1px solid ${col.colorBorder}` }}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-sora font-semibold" style={{ color: col.color }}>{col.label}</span>
-                        <span className="font-mono text-2xl font-bold" style={{ color: col.color }}>{selectedDispatch.progress}%</span>
+                    <button key={plan.id}
+                      onClick={() => { setSelectedPlan(plan); fetchStops(plan); }}
+                      className="w-full text-left px-2.5 py-2 rounded-lg transition-all flex items-center justify-between gap-2"
+                      style={{ background: isSel ? '#eff6ff' : 'transparent' }}>
+                      <div className="min-w-0">
+                        <p className="font-inter text-sm font-medium truncate" style={{ color: '#1e293b' }}>{plan.title}</p>
+                        <p className="font-inter text-xs" style={{ color: '#64748b' }}>{formatDate(plan.date)} · {plan.stopCount} stops</p>
                       </div>
-                      <div className="mt-2 h-2 rounded-full overflow-hidden" style={{ background: `${col.color}20` }}>
-                        <div
-                          className="h-full rounded-full"
-                          style={{ width: `${selectedDispatch.progress}%`, background: col.color }}
-                        />
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <div className="w-1.5 h-1.5 rounded-full" style={{ background: sc.dot }} />
+                        {isSel && <ChevronRight className="w-3.5 h-3.5" style={{ color: '#3b82f6' }} />}
                       </div>
-                    </div>
+                    </button>
                   );
-                })()}
-
-                {/* Order Info */}
-                <div className="glass-card p-4">
-                  <h4 className="font-sora font-semibold text-sm mb-3 flex items-center gap-2" style={{ color: '#1e293b' }}>
-                    <FileText className="w-4 h-4" style={{ color: '#3b82f6' }} />
-                    Order Information
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="font-mono text-[10px] uppercase" style={{ color: '#94a3b8' }}>Order Reference</p>
-                      <p className="font-mono text-sm" style={{ color: '#3b82f6' }}>{selectedDispatch.orderRef}</p>
-                    </div>
-                    <div>
-                      <p className="font-mono text-[10px] uppercase" style={{ color: '#94a3b8' }}>Dispatch Time</p>
-                      <p className="font-inter text-sm" style={{ color: '#1e293b' }}>{selectedDispatch.dispatchTime}</p>
-                    </div>
-                    <div>
-                      <p className="font-mono text-[10px] uppercase" style={{ color: '#94a3b8' }}>Estimated Arrival</p>
-                      <p className="font-inter text-sm" style={{ color: '#22c55e' }}>{selectedDispatch.eta}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Client Info */}
-                <div className="glass-card p-4">
-                  <h4 className="font-sora font-semibold text-sm mb-3 flex items-center gap-2" style={{ color: '#1e293b' }}>
-                    <User className="w-4 h-4" style={{ color: '#3b82f6' }} />
-                    Client Details
-                  </h4>
-                  <div className="space-y-2">
-                    <p className="font-sora font-medium" style={{ color: '#1e293b' }}>{selectedDispatch.client.name}</p>
-                    <div className="flex items-start gap-2" style={{ color: '#64748b' }}>
-                      <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                      <p className="font-inter text-sm">{selectedDispatch.client.address}</p>
-                    </div>
-                    <p className="font-mono text-sm" style={{ color: '#94a3b8' }}>{selectedDispatch.client.phone}</p>
-                  </div>
-                </div>
-
-                {/* Route Info */}
-                <div className="glass-card p-4">
-                  <h4 className="font-sora font-semibold text-sm mb-3 flex items-center gap-2" style={{ color: '#1e293b' }}>
-                    <Navigation className="w-4 h-4" style={{ color: '#3b82f6' }} />
-                    Route Details
-                  </h4>
-                  <div className="flex items-center gap-4">
-                    <div className="flex-1">
-                      <p className="font-mono text-[10px] uppercase" style={{ color: '#94a3b8' }}>From</p>
-                      <p className="font-inter text-sm" style={{ color: '#1e293b' }}>{selectedDispatch.route.from}</p>
-                    </div>
-                    <ChevronRight className="w-5 h-5" style={{ color: '#cbd5e1' }} />
-                    <div className="flex-1">
-                      <p className="font-mono text-[10px] uppercase" style={{ color: '#94a3b8' }}>To</p>
-                      <p className="font-inter text-sm" style={{ color: '#1e293b' }}>{selectedDispatch.route.to}</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 mt-4 pt-4" style={{ borderTop: '1px solid #f1f5f9' }}>
-                    <div>
-                      <p className="font-mono text-[10px] uppercase" style={{ color: '#94a3b8' }}>Distance</p>
-                      <p className="font-inter text-sm" style={{ color: '#1e293b' }}>{selectedDispatch.route.distance}</p>
-                    </div>
-                    <div>
-                      <p className="font-mono text-[10px] uppercase" style={{ color: '#94a3b8' }}>Est. Time</p>
-                      <p className="font-inter text-sm" style={{ color: '#1e293b' }}>{selectedDispatch.route.estimatedTime}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Driver Info */}
-                <div className="glass-card p-4">
-                  <h4 className="font-sora font-semibold text-sm mb-3 flex items-center gap-2" style={{ color: '#1e293b' }}>
-                    <Truck className="w-4 h-4" style={{ color: '#3b82f6' }} />
-                    Driver Information
-                  </h4>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <p className="font-mono text-[10px] uppercase" style={{ color: '#94a3b8' }}>Name</p>
-                      <p className="font-inter text-sm" style={{ color: '#1e293b' }}>{selectedDispatch.driver.name}</p>
-                    </div>
-                    <div>
-                      <p className="font-mono text-[10px] uppercase" style={{ color: '#94a3b8' }}>Vehicle</p>
-                      <p className="font-inter text-sm" style={{ color: '#1e293b' }}>{selectedDispatch.driver.vehicle}</p>
-                    </div>
-                    <div>
-                      <p className="font-mono text-[10px] uppercase" style={{ color: '#94a3b8' }}>Contact</p>
-                      <p className="font-mono text-sm" style={{ color: '#94a3b8' }}>{selectedDispatch.driver.phone}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Items */}
-                <div className="glass-card p-4">
-                  <h4 className="font-sora font-semibold text-sm mb-3 flex items-center gap-2" style={{ color: '#1e293b' }}>
-                    <Box className="w-4 h-4" style={{ color: '#3b82f6' }} />
-                    Order Items
-                  </h4>
-                  <div className="space-y-2">
-                    {selectedDispatch.items.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center justify-between py-2"
-                        style={{ borderBottom: idx < selectedDispatch.items.length - 1 ? '1px solid #f1f5f9' : 'none' }}
-                      >
-                        <div>
-                          <p className="font-inter text-sm" style={{ color: '#1e293b' }}>{item.name}</p>
-                          <p className="font-mono text-[10px]" style={{ color: '#3b82f6' }}>{item.sku}</p>
-                        </div>
-                        <span className="font-mono text-sm" style={{ color: '#64748b' }}>x{item.quantity}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div
-                    className="mt-4 pt-3 flex items-center justify-between"
-                    style={{ borderTop: '1px solid #e2e8f0' }}
-                  >
-                    <span className="font-inter text-sm" style={{ color: '#64748b' }}>Total Items</span>
-                    <span className="font-sora font-bold" style={{ color: '#1e293b' }}>
-                      {selectedDispatch.items.reduce((sum, item) => sum + item.quantity, 0)}
-                    </span>
-                  </div>
-                </div>
+                })}
               </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+
+              {/* Stop list */}
+              {selectedPlan && (
+                <div className="glass-card flex-1 min-h-0 overflow-hidden flex flex-col">
+                  <div className="px-3 py-2 border-b flex-shrink-0" style={{ borderColor: '#f1f5f9' }}>
+                    <p className="font-inter text-xs" style={{ color: '#94a3b8' }}>DELIVERIES · {stops.length} stops</p>
+                  </div>
+                  <div className="overflow-y-auto flex-1 p-1.5 space-y-0.5">
+                    {stopsLoading ? (
+                      <div className="p-4 text-center">
+                        <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" style={{ color: '#3b82f6' }} />
+                        <p className="font-inter text-xs" style={{ color: '#94a3b8' }}>Loading stops...</p>
+                      </div>
+                    ) : stops.length === 0 ? (
+                      <div className="p-4 text-center">
+                        <p className="font-inter text-xs" style={{ color: '#94a3b8' }}>No stops in this plan</p>
+                      </div>
+                    ) : stops.map(stop => {
+                      const sc = statusColour(stop.status);
+                      const isSel = selectedStop?.id === stop.id;
+                      return (
+                        <button key={stop.id} onClick={() => setSelectedStop(stop)}
+                          className="w-full text-left px-2.5 py-2 rounded-lg transition-all"
+                          style={{ background: isSel ? '#eff6ff' : 'transparent' }}>
+                          <div className="flex items-start gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" style={{ background: sc.dot }} />
+                            <div className="min-w-0 flex-1">
+                              <p className="font-inter text-sm font-medium truncate" style={{ color: '#1e293b' }}>
+                                {stop.recipientName || 'Unknown'}
+                              </p>
+                              <p className="font-inter text-xs truncate" style={{ color: '#64748b' }}>{stop.address}</p>
+                              {stop.orderRef && <p className="font-inter text-xs" style={{ color: '#94a3b8' }}>{stop.orderRef}</p>}
+                            </div>
+                            <span className="text-xs font-inter px-1.5 py-0.5 rounded-md flex-shrink-0"
+                              style={{ background: sc.bg, color: sc.text }}>{stop.packageCount} pkg</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* RIGHT — detail panel */}
+            <div className="flex-1 min-w-0">
+              {!selectedStop ? (
+                <div className="glass-card h-full flex items-center justify-center">
+                  <div className="text-center">
+                    <Package className="w-10 h-10 mx-auto mb-3" style={{ color: '#e2e8f0' }} />
+                    <p className="font-sora font-semibold" style={{ color: '#1e293b' }}>Select a delivery</p>
+                    <p className="font-inter text-sm mt-1" style={{ color: '#64748b' }}>Click any stop to see full order details</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="glass-card h-full flex flex-col overflow-hidden">
+                  {/* Detail header */}
+                  <div className="px-5 py-4 border-b flex-shrink-0" style={{ borderColor: '#f1f5f9' }}>
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h3 className="font-sora font-bold text-lg" style={{ color: '#1e293b' }}>
+                          {selectedStop.recipientName || 'Unknown Recipient'}
+                        </h3>
+                        <p className="font-inter text-sm mt-0.5" style={{ color: '#64748b' }}>
+                          {[selectedStop.address, selectedStop.city, selectedStop.postcode].filter(Boolean).join(', ')}
+                        </p>
+                      </div>
+                      {(() => { const sc = statusColour(selectedStop.status); return (
+                        <span className="text-xs font-inter font-medium px-2.5 py-1 rounded-full capitalize flex-shrink-0"
+                          style={{ background: sc.bg, color: sc.text }}>{selectedStop.status || 'Pending'}</span>
+                      ); })()}
+                    </div>
+                  </div>
+
+                  {/* Detail body */}
+                  <div className="flex-1 overflow-y-auto p-5 space-y-5">
+
+                    {/* Contact + Order */}
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-3">
+                        <p className="font-inter text-xs font-semibold uppercase tracking-wide" style={{ color: '#94a3b8' }}>Contact</p>
+                        <div className="flex items-center gap-2">
+                          <User className="w-4 h-4 flex-shrink-0" style={{ color: '#64748b' }} />
+                          <span className="font-inter text-sm" style={{ color: '#1e293b' }}>{selectedStop.recipientName || '—'}</span>
+                        </div>
+                        {selectedStop.recipientPhone && (
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-4 h-4 flex-shrink-0" style={{ color: '#64748b' }} />
+                            <a href={`tel:${selectedStop.recipientPhone}`} className="font-inter text-sm" style={{ color: '#3b82f6' }}>
+                              {selectedStop.recipientPhone}
+                            </a>
+                          </div>
+                        )}
+                        <div className="flex items-start gap-2">
+                          <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#64748b' }} />
+                          <span className="font-inter text-sm" style={{ color: '#1e293b' }}>{[selectedStop.address, selectedStop.city, selectedStop.postcode].filter(Boolean).join(', ')}</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <p className="font-inter text-xs font-semibold uppercase tracking-wide" style={{ color: '#94a3b8' }}>Order</p>
+                        {selectedStop.orderRef && (
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-4 h-4 flex-shrink-0" style={{ color: '#64748b' }} />
+                            <span className="font-inter text-sm font-medium" style={{ color: '#1e293b' }}>{selectedStop.orderRef}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <Package className="w-4 h-4 flex-shrink-0" style={{ color: '#64748b' }} />
+                          <span className="font-inter text-sm" style={{ color: '#1e293b' }}>
+                            {selectedStop.packageCount} package{selectedStop.packageCount !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                        {selectedStop.scheduledAt && (
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 flex-shrink-0" style={{ color: '#64748b' }} />
+                            <span className="font-inter text-sm" style={{ color: '#1e293b' }}>ETA {formatTime(selectedStop.scheduledAt)}</span>
+                          </div>
+                        )}
+                        {selectedStop.completedAt && (
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: '#16a34a' }} />
+                            <span className="font-inter text-sm" style={{ color: '#16a34a' }}>Delivered {formatTime(selectedStop.completedAt)}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Items */}
+                    <div>
+                      <p className="font-inter text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: '#94a3b8' }}>
+                        Items in This Order
+                      </p>
+                      <div className="rounded-xl p-4" style={{ background: '#f8fafc' }}>
+                        {selectedStop.orderInfo ? (
+                          String(selectedStop.orderInfo).split('\n').filter(Boolean).map((item, i) => (
+                            <div key={i} className="flex items-center gap-2 py-1">
+                              <Circle className="w-1.5 h-1.5 flex-shrink-0" style={{ color: '#94a3b8' }} fill="#94a3b8" />
+                              <span className="font-inter text-sm" style={{ color: '#1e293b' }}>{item}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="font-inter text-sm" style={{ color: '#94a3b8' }}>
+                            No order info — add item details in the stop notes in Spoke Dispatch
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Notes */}
+                    {selectedStop.notes && selectedStop.notes !== selectedStop.orderInfo && (
+                      <div>
+                        <p className="font-inter text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#94a3b8' }}>Notes</p>
+                        <div className="rounded-xl p-3" style={{ background: '#fffbeb' }}>
+                          <p className="font-inter text-sm" style={{ color: '#92400e' }}>{selectedStop.notes}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Nearby stops — route combining */}
+                    {nearbyStops(selectedStop).length > 0 && (
+                      <div>
+                        <p className="font-inter text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#94a3b8' }}>
+                          ✦ Same area — consider combining
+                        </p>
+                        <div className="rounded-xl p-3 space-y-2" style={{ background: '#f5f3ff' }}>
+                          {nearbyStops(selectedStop).map(s => (
+                            <button key={s.id} onClick={() => setSelectedStop(s)}
+                              className="w-full text-left flex items-center justify-between gap-2 py-1 hover:opacity-70 transition-opacity">
+                              <div>
+                                <p className="font-inter text-sm font-medium" style={{ color: '#4c1d95' }}>{s.recipientName}</p>
+                                <p className="font-inter text-xs" style={{ color: '#7c3aed' }}>{s.address}</p>
+                              </div>
+                              <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#7c3aed' }} />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
