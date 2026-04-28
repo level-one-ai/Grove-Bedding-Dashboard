@@ -46,7 +46,7 @@ function extractDateFields(obj, prefix = '') {
   return dates;
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Use GET' });
 
   const apiKey  = process.env.CIN7_API_KEY;
