@@ -5,42 +5,96 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "framework": "vite",
-
   "crons": [
-    { "path": "/api/cron",      "schedule": "0 * * * *" },
-    { "path": "/api/scan-now",  "schedule": "* * * * *" }
+    {
+      "path": "/api/cron",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/scan-now",
+      "schedule": "* * * * *"
+    }
   ],
-
   "rewrites": [
-    { "source": "/api/spoke-plans", "destination": "/spoke-dispatch/api/plans" },
-    { "source": "/api/spoke-stops",  "destination": "/spoke-dispatch/api/stops"  },
-    { "source": "/api/birlea-confirm", "destination": "/birlea-ordering/api/birlea-confirm" },
-    { "source": "/api/spoke-plans",   "destination": "/spoke-dispatch/api/plans" },
-    { "source": "/api/spoke-routes",  "destination": "/spoke-dispatch/api/routes" },
-    { "source": "/api/test-run",      "destination": "/pdf-router/api/test-run" },
-    { "source": "/api/file-page",     "destination": "/pdf-router/api/file-page" },
-    { "source": "/api/webhook",       "destination": "/pdf-router/api/webhook" },
-    { "source": "/api/scan-now",      "destination": "/pdf-router/api/scan-now" },
-    { "source": "/api/auto-poll",     "destination": "/pdf-router/api/auto-poll" },
-    { "source": "/api/gdrive",        "destination": "/pdf-router/api/gdrive" },
-    { "source": "/api/cron",          "destination": "/pdf-router/api/cron" },
-    { "source": "/api/scan-cron",     "destination": "/pdf-router/api/scan-cron" },
-    { "source": "/api/logs",          "destination": "/pdf-router/api/logs" },
-    { "source": "/api/callback",      "destination": "/pdf-router/api/callback" },
-    { "source": "/api/admin",         "destination": "/pdf-router/api/admin" },
-    { "source": "/api/diag",          "destination": "/pdf-router/api/diag" },
-    { "source": "/api/notify",        "destination": "/pdf-router/api/notify" },
-    { "source": "/api/scan-files",    "destination": "/pdf-router/api/scan-files" },
-    { "source": "/api/status",        "destination": "/pdf-router/api/status" },
-    { "source": "/api/subscribe",     "destination": "/pdf-router/api/subscribe" },
-    { "source": "/api/dashboard",     "destination": "/pdf-router/api/dashboard" },
-    { "source": "/api/test-receive",  "destination": "/pdf-router/api/test-receive" },
-    { "source": "/api/sales-orders",  "destination": "/label-print-service/api/sales-orders" },
-    { "source": "/api/set-etd",       "destination": "/label-print-service/api/set-etd" },
-    { "source": "/api/label-history", "destination": "/label-print-service/api/label-history" },
-    { "source": "/api/dispatch-log",  "destination": "/label-print-service/api/dispatch-log" },
-    { "source": "/webhook-cin7",      "destination": "/label-print-service/api/webhook-cin7" },
-    { "source": "/discover-fields",   "destination": "/label-print-service/api/discover-fields" },
-    { "source": "/bridge-status",     "destination": "/label-print-service/api/bridge-status" }
+    {
+      "source": "/api/test-run",
+      "destination": "/pdf-router/api/test-run"
+    },
+    {
+      "source": "/api/file-page",
+      "destination": "/pdf-router/api/file-page"
+    },
+    {
+      "source": "/api/webhook",
+      "destination": "/pdf-router/api/webhook"
+    },
+    {
+      "source": "/api/scan-now",
+      "destination": "/pdf-router/api/scan-now"
+    },
+    {
+      "source": "/api/auto-poll",
+      "destination": "/pdf-router/api/auto-poll"
+    },
+    {
+      "source": "/api/gdrive",
+      "destination": "/pdf-router/api/gdrive"
+    },
+    {
+      "source": "/api/cron",
+      "destination": "/pdf-router/api/cron"
+    },
+    {
+      "source": "/api/scan-cron",
+      "destination": "/pdf-router/api/scan-cron"
+    },
+    {
+      "source": "/api/logs",
+      "destination": "/pdf-router/api/logs"
+    },
+    {
+      "source": "/api/callback",
+      "destination": "/pdf-router/api/callback"
+    },
+    {
+      "source": "/api/admin",
+      "destination": "/pdf-router/api/admin"
+    },
+    {
+      "source": "/api/diag",
+      "destination": "/pdf-router/api/diag"
+    },
+    {
+      "source": "/api/notify",
+      "destination": "/pdf-router/api/notify"
+    },
+    {
+      "source": "/api/scan-files",
+      "destination": "/pdf-router/api/scan-files"
+    },
+    {
+      "source": "/api/status",
+      "destination": "/pdf-router/api/status"
+    },
+    {
+      "source": "/api/subscribe",
+      "destination": "/pdf-router/api/subscribe"
+    },
+    {
+      "source": "/api/dashboard",
+      "destination": "/pdf-router/api/dashboard"
+    },
+    {
+      "source": "/api/test-receive",
+      "destination": "/pdf-router/api/test-receive"
+    },
+    {
+      "source": "/api/spoke-stops",
+      "destination": "/api/spoke-stops"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ]
 }
