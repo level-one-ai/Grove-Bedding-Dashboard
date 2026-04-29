@@ -17,10 +17,9 @@
 const CIN7_BASE = 'https://api.cin7.com/api/v1';
 
 const ETD_CANDIDATES = [
-  'RequiredShipDate', 'ShipByDate', 'ETD', 'Etd', 'DeliveryDate',
-  'EstimatedDeliveryDate', 'ExpectedDeliveryDate', 'PromisedDate',
-  'PlannedShipDate', 'PlannedDeliveryDate', 'DueDate', 'DispatchDate',
-  'ETA', 'Eta', 'etd', 'CustomETD', 'RequiredDate',
+  'estimatedDeliveryDate', 'dispatchedDate', 'invoiceDate',
+  'cancellationDate', 'RequiredShipDate', 'ShipByDate', 'ETD',
+  'DeliveryDate', 'PromisedDate', 'DueDate', 'RequiredDate',
 ];
 
 function cin7Headers(apiUser, apiKey) {
@@ -74,7 +73,7 @@ module.exports = async function handler(req, res) {
     if (orderId) {
       const r = await fetch(`${CIN7_BASE}/SalesOrders/${orderId}`, { headers });
       const d = await r.json();
-      order = Array.isArray(d) ? d[0] : (d?.Data ?? d);
+      order = Array.isArray(d) ? d[0] : d;
     } else {
       // Cin7 Omni uses SQL-like where syntax for filtering
       const r = await fetch(
@@ -82,10 +81,10 @@ module.exports = async function handler(req, res) {
         { headers }
       );
       const d = await r.json();
-      order = Array.isArray(d) ? d[0] : (d?.Data?.[0] ?? d?.[0] ?? d);
+      order = Array.isArray(d) ? d[0] : d;
     }
 
-    if (!order || (!order.Id && !order.ID)) {
+    if (!order || (!order.id && !order.Id && !order.ID)) {
       return res.status(404).json({
         error: 'Order not found in Cin7 Omni',
         hint: 'Check the order reference is correct and the API credentials have read permission on Sales Orders',
@@ -125,8 +124,8 @@ module.exports = async function handler(req, res) {
     }
 
     return res.status(200).json({
-      orderReference:    order.Reference ?? order.OrderNumber ?? orderRef,
-      orderId:           order.Id ?? order.ID,
+      orderReference:    order.reference ?? order.Reference ?? orderRef,
+      orderId:           order.id ?? order.Id ?? order.ID,
       recommendation,
       etdCandidates,
       dateFields,

@@ -27,11 +27,11 @@ function cin7Headers(apiUser, apiKey) {
 }
 
 function formatLines(order) {
-  const lines = order.LineItems ?? order.Lines ?? order.SaleOrderLines ?? [];
+  const lines = order.lineItems ?? order.LineItems ?? order.Lines ?? [];
   return lines.map(l => ({
-    productName: l.Name ?? l.ProductName ?? l.Description ?? l.SKU ?? 'Unknown product',
-    qty:         l.Quantity ?? l.Qty ?? 1,
-    sku:         l.SKU ?? l.Code ?? '',
+    productName: [l.name, l.option1].filter(Boolean).join(' - ') || l.code || 'Unknown product',
+    qty:         l.qty ?? l.Quantity ?? 1,
+    sku:         l.code ?? l.SKU ?? '',
   }));
 }
 
@@ -80,7 +80,7 @@ module.exports = async function handler(req, res) {
     let filtered = allOrders;
     if (etdField) {
       filtered = allOrders.filter(order => {
-        const val = order[etdField] ?? order.AdditionalAttributes?.[etdField];
+        const val = order[etdField] ?? order.customFields?.[etdField];
         return !val || val === '' || val === null;
       });
       console.log(`[sales-orders] ${filtered.length} orders missing ETD (field: ${etdField})`);
@@ -88,14 +88,16 @@ module.exports = async function handler(req, res) {
 
     // Map to clean format for the dashboard
     const orders = filtered.map(order => ({
-      id:           String(order.Id ?? order.ID ?? order.SalesOrderId ?? ''),
-      orderNumber:  String(order.Reference ?? order.OrderNumber ?? order.SalesOrderNumber ?? ''),
-      customerName: order.MemberEmail ?? order.BillingAddress?.Name ?? order.Company ?? order.MemberId ?? 'Unknown',
-      orderDate:    order.CreatedDate ?? order.OrderDate ?? order.Date ?? '',
-      status:       order.Stage ?? order.Status ?? '',
-      totalAmount:  order.Total ?? order.TotalAmount ?? null,
-      currency:     order.CurrencyCode ?? 'GBP',
-      lines:        formatLines(order),
+      id:              String(order.id ?? order.Id ?? ''),
+      orderNumber:     String(order.reference ?? order.Reference ?? ''),
+      customerName:    order.company ?? order.deliveryCompany ?? order.firstName ?? 'Unknown',
+      orderDate:       order.createdDate ?? '',
+      status:          order.stage ?? order.status ?? '',
+      totalAmount:     order.total ?? null,
+      currency:        order.currencyCode ?? 'GBP',
+      etd:             order.estimatedDeliveryDate ?? null,
+      deliveryAddress: [order.deliveryAddress1, order.deliveryCity, order.deliveryPostalCode].filter(Boolean).join(', '),
+      lines:           formatLines(order),
     })).filter(o => o.id && o.orderNumber);
 
     // Debug: return first raw order so we can see exact field names
