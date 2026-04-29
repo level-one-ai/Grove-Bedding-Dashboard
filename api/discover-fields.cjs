@@ -76,8 +76,9 @@ module.exports = async function handler(req, res) {
       const d = await r.json();
       order = Array.isArray(d) ? d[0] : (d?.Data ?? d);
     } else {
+      // Cin7 Omni uses SQL-like where syntax for filtering
       const r = await fetch(
-        `${CIN7_BASE}/SalesOrders?where=reference="${encodeURIComponent(orderRef)}"&limit=1`,
+        `${CIN7_BASE}/SalesOrders?where=reference%3D%27${encodeURIComponent(orderRef)}%27&rows=1`,
         { headers }
       );
       const d = await r.json();
