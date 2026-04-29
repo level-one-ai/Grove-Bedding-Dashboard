@@ -3,7 +3,6 @@
   "fluid": true,
   "buildCommand": "npm run build",
   "installCommand": "npm install",
-  "framework": "vite",
   "crons": [
     {
       "path": "/api/cron",
@@ -15,6 +14,46 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/api/sales-orders",
+      "destination": "/api/sales-orders.cjs"
+    },
+    {
+      "source": "/api/set-etd",
+      "destination": "/api/set-etd.cjs"
+    },
+    {
+      "source": "/api/discover-fields",
+      "destination": "/api/discover-fields.cjs"
+    },
+    {
+      "source": "/api/webhook-cin7",
+      "destination": "/api/webhook-cin7.cjs"
+    },
+    {
+      "source": "/api/bridge-status",
+      "destination": "/api/bridge-status.cjs"
+    },
+    {
+      "source": "/api/dispatch-log",
+      "destination": "/api/dispatch-log.cjs"
+    },
+    {
+      "source": "/api/label-history",
+      "destination": "/api/label-history.cjs"
+    },
+    {
+      "source": "/api/spoke-plans",
+      "destination": "/api/spoke-plans.cjs"
+    },
+    {
+      "source": "/api/spoke-stops",
+      "destination": "/api/spoke-stops.cjs"
+    },
+    {
+      "source": "/api/birlea-confirm",
+      "destination": "/api/birlea-confirm.cjs"
+    },
     {
       "source": "/api/test-run",
       "destination": "/pdf-router/api/test-run.js"
@@ -88,48 +127,19 @@
       "destination": "/pdf-router/api/test-receive.js"
     },
     {
-      "source": "/api/sales-orders",
-      "destination": "/api/sales-orders.cjs"
-    },
-    {
-      "source": "/api/set-etd",
-      "destination": "/api/set-etd.cjs"
-    },
-    {
-      "source": "/api/discover-fields",
-      "destination": "/api/discover-fields.cjs"
-    },
-    {
-      "source": "/api/webhook-cin7",
-      "destination": "/api/webhook-cin7.cjs"
-    },
-    {
-      "source": "/api/bridge-status",
-      "destination": "/api/bridge-status.cjs"
-    },
-    {
-      "source": "/api/dispatch-log",
-      "destination": "/api/dispatch-log.cjs"
-    },
-    {
-      "source": "/api/label-history",
-      "destination": "/api/label-history.cjs"
-    },
-    {
-      "source": "/api/spoke-plans",
-      "destination": "/api/spoke-plans.cjs"
-    },
-    {
-      "source": "/api/spoke-stops",
-      "destination": "/api/spoke-stops.cjs"
-    },
-    {
-      "source": "/api/birlea-confirm",
-      "destination": "/api/birlea-confirm.cjs"
-    },
-    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
+    }
+  ],
+  "outputDirectory": "dist",
+  "builds": [
+    {
+      "src": "api/*.cjs",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "pdf-router/api/*.js",
+      "use": "@vercel/node"
     }
   ]
 }
