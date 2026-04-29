@@ -98,6 +98,17 @@ module.exports = async function handler(req, res) {
       lines:        formatLines(order),
     })).filter(o => o.id && o.orderNumber);
 
+    // Debug: return first raw order so we can see exact field names
+    const debug = req.query.debug === '1';
+    if (debug && allOrders.length > 0) {
+      return res.status(200).json({
+        success: true,
+        debug: true,
+        firstOrderRaw: allOrders[0],
+        fieldNames: Object.keys(allOrders[0]),
+      });
+    }
+
     return res.status(200).json({
       success:      true,
       count:        orders.length,
