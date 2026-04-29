@@ -131,8 +131,14 @@
       "destination": "/index.html"
     }
   ],
-  "outputDirectory": "dist",
   "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    },
     {
       "src": "api/*.cjs",
       "use": "@vercel/node"
