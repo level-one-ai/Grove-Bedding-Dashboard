@@ -15,86 +15,122 @@
       "schedule": "* * * * *"
     }
   ],
-  "rewrites": [
+  "routes": [
     {
-      "source": "/api/test-run",
-      "destination": "/pdf-router/api/test-run"
+      "src": "/api/test-run",
+      "dest": "/pdf-router/api/test-run.js"
     },
     {
-      "source": "/api/file-page",
-      "destination": "/pdf-router/api/file-page"
+      "src": "/api/file-page",
+      "dest": "/pdf-router/api/file-page.js"
     },
     {
-      "source": "/api/webhook",
-      "destination": "/pdf-router/api/webhook"
+      "src": "/api/webhook",
+      "dest": "/pdf-router/api/webhook.js"
     },
     {
-      "source": "/api/scan-now",
-      "destination": "/pdf-router/api/scan-now"
+      "src": "/api/scan-now",
+      "dest": "/pdf-router/api/scan-now.js"
     },
     {
-      "source": "/api/auto-poll",
-      "destination": "/pdf-router/api/auto-poll"
+      "src": "/api/auto-poll",
+      "dest": "/pdf-router/api/auto-poll.js"
     },
     {
-      "source": "/api/gdrive",
-      "destination": "/pdf-router/api/gdrive"
+      "src": "/api/gdrive",
+      "dest": "/pdf-router/api/gdrive.js"
     },
     {
-      "source": "/api/cron",
-      "destination": "/pdf-router/api/cron"
+      "src": "/api/cron",
+      "dest": "/pdf-router/api/cron.js"
     },
     {
-      "source": "/api/scan-cron",
-      "destination": "/pdf-router/api/scan-cron"
+      "src": "/api/scan-cron",
+      "dest": "/pdf-router/api/scan-cron.js"
     },
     {
-      "source": "/api/logs",
-      "destination": "/pdf-router/api/logs"
+      "src": "/api/logs",
+      "dest": "/pdf-router/api/logs.js"
     },
     {
-      "source": "/api/callback",
-      "destination": "/pdf-router/api/callback"
+      "src": "/api/callback",
+      "dest": "/pdf-router/api/callback.js"
     },
     {
-      "source": "/api/admin",
-      "destination": "/pdf-router/api/admin"
+      "src": "/api/admin",
+      "dest": "/pdf-router/api/admin.js"
     },
     {
-      "source": "/api/diag",
-      "destination": "/pdf-router/api/diag"
+      "src": "/api/diag",
+      "dest": "/pdf-router/api/diag.js"
     },
     {
-      "source": "/api/notify",
-      "destination": "/pdf-router/api/notify"
+      "src": "/api/notify",
+      "dest": "/pdf-router/api/notify.js"
     },
     {
-      "source": "/api/scan-files",
-      "destination": "/pdf-router/api/scan-files"
+      "src": "/api/scan-files",
+      "dest": "/pdf-router/api/scan-files.js"
     },
     {
-      "source": "/api/status",
-      "destination": "/pdf-router/api/status"
+      "src": "/api/status",
+      "dest": "/pdf-router/api/status.js"
     },
     {
-      "source": "/api/subscribe",
-      "destination": "/pdf-router/api/subscribe"
+      "src": "/api/subscribe",
+      "dest": "/pdf-router/api/subscribe.js"
     },
     {
-      "source": "/api/dashboard",
-      "destination": "/pdf-router/api/dashboard"
+      "src": "/api/dashboard",
+      "dest": "/pdf-router/api/dashboard.js"
     },
     {
-      "source": "/api/test-receive",
-      "destination": "/pdf-router/api/test-receive"
+      "src": "/api/test-receive",
+      "dest": "/pdf-router/api/test-receive.js"
     },
     {
-      "source": "/api/spoke-stops",
-      "destination": "/api/spoke-stops"
+      "src": "/api/sales-orders",
+      "dest": "/api/sales-orders.cjs"
     },
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "src": "/api/set-etd",
+      "dest": "/api/set-etd.cjs"
+    },
+    {
+      "src": "/api/discover-fields",
+      "dest": "/api/discover-fields.cjs"
+    },
+    {
+      "src": "/api/webhook-cin7",
+      "dest": "/api/webhook-cin7.cjs"
+    },
+    {
+      "src": "/api/bridge-status",
+      "dest": "/api/bridge-status.cjs"
+    },
+    {
+      "src": "/api/dispatch-log",
+      "dest": "/api/dispatch-log.cjs"
+    },
+    {
+      "src": "/api/label-history",
+      "dest": "/api/label-history.cjs"
+    },
+    {
+      "src": "/api/spoke-plans",
+      "dest": "/api/spoke-plans.cjs"
+    },
+    {
+      "src": "/api/spoke-stops",
+      "dest": "/api/spoke-stops.cjs"
+    },
+    {
+      "src": "/api/birlea-confirm",
+      "dest": "/api/birlea-confirm.cjs"
+    },
+    {
+      "src": "/((?!api/).*)",
+      "dest": "/index.html"
     }
   ]
 }
