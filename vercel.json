@@ -55,76 +55,8 @@
       "destination": "/api/birlea-confirm.cjs"
     },
     {
-      "source": "/api/test-run",
-      "destination": "/pdf-router/api/test-run.js"
-    },
-    {
-      "source": "/api/file-page",
-      "destination": "/pdf-router/api/file-page.js"
-    },
-    {
-      "source": "/api/webhook",
-      "destination": "/pdf-router/api/webhook.js"
-    },
-    {
-      "source": "/api/scan-now",
-      "destination": "/pdf-router/api/scan-now.js"
-    },
-    {
-      "source": "/api/auto-poll",
-      "destination": "/pdf-router/api/auto-poll.js"
-    },
-    {
-      "source": "/api/gdrive",
-      "destination": "/pdf-router/api/gdrive.js"
-    },
-    {
-      "source": "/api/cron",
-      "destination": "/pdf-router/api/cron.js"
-    },
-    {
-      "source": "/api/scan-cron",
-      "destination": "/pdf-router/api/scan-cron.js"
-    },
-    {
-      "source": "/api/logs",
-      "destination": "/pdf-router/api/logs.js"
-    },
-    {
-      "source": "/api/callback",
-      "destination": "/pdf-router/api/callback.js"
-    },
-    {
-      "source": "/api/admin",
-      "destination": "/pdf-router/api/admin.js"
-    },
-    {
-      "source": "/api/diag",
-      "destination": "/pdf-router/api/diag.js"
-    },
-    {
-      "source": "/api/notify",
-      "destination": "/pdf-router/api/notify.js"
-    },
-    {
-      "source": "/api/scan-files",
-      "destination": "/pdf-router/api/scan-files.js"
-    },
-    {
-      "source": "/api/status",
-      "destination": "/pdf-router/api/status.js"
-    },
-    {
-      "source": "/api/subscribe",
-      "destination": "/pdf-router/api/subscribe.js"
-    },
-    {
-      "source": "/api/dashboard",
-      "destination": "/pdf-router/api/dashboard.js"
-    },
-    {
-      "source": "/api/test-receive",
-      "destination": "/pdf-router/api/test-receive.js"
+      "source": "/api/router-status",
+      "destination": "/pdf-router-connection/api/router-status.cjs"
     },
     {
       "source": "/((?!api/).*)",
@@ -145,6 +77,10 @@
     },
     {
       "src": "pdf-router/api/*.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "pdf-router-connection/api/*.cjs",
       "use": "@vercel/node"
     }
   ]

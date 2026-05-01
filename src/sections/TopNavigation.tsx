@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
-import { Home, Package, FileText, Truck, Tag, ShoppingBag, PhoneCall, FolderOpen, ClipboardList } from 'lucide-react';
+import { Home, Package, FileText, Truck, Tag, ShoppingBag, PhoneCall, FolderOpen, ClipboardList, GitBranch } from 'lucide-react';
 import type { PageId } from '../App';
 
 interface Props {
@@ -20,6 +20,7 @@ const navItems = [
   { icon: PhoneCall,   label: 'Calls',      pageId: 'calls'     as PageId },
   { icon: FolderOpen,  label: 'PDF Router',     pageId: 'files'        as PageId },
   { icon: ClipboardList,label: 'Sales Orders',    pageId: 'salesorders' as PageId },
+  { icon: GitBranch,    label: 'PDF Router',     pageId: 'pdfrouter'   as PageId },
 ];
 
 export default function SideNavigation({ activePage, setActivePage, isOpen, onClose }: Props) {

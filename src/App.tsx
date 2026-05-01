@@ -17,8 +17,9 @@ import BirleaOrders from './sections/BirleaOrders';
 import OutboundCalls from './sections/OutboundCalls';
 import FileManagement from './sections/FileManagement';
 import SalesOrders from './sections/SalesOrders';
+import PDFRouterStatus from './sections/PDFRouterStatus';
 
-export type PageId = 'dashboard' | 'stock' | 'logs' | 'dispatch' | 'labels' | 'orders' | 'calls' | 'files' | 'salesorders';
+export type PageId = 'dashboard' | 'stock' | 'logs' | 'dispatch' | 'labels' | 'orders' | 'calls' | 'files' | 'salesorders' | 'pdfrouter';
 
 // ── Firebase Realtime DB — grove-label-print project ──────────────────────────
 // Replace these values with your grove-label-print Firebase project credentials
@@ -230,6 +231,7 @@ function App() {
         {activePage === 'calls' && <OutboundCalls key="calls" />}
         {activePage === 'files' && <FileManagement key="files" />}
         {activePage === 'salesorders' && <SalesOrders key="salesorders" />}
+        {activePage === 'pdfrouter' && <PDFRouterStatus key="pdfrouter" />}
       </main>
 
       {/* ── Order Created Notifications — bottom-right ── */}
