@@ -2,13 +2,6 @@
  * src/sections/PDFRouterStatus.tsx
  * ─────────────────────────────────
  * Live PDF Router monitoring panel.
- *
- * Reads from three Firestore collections on the PDF Router Firebase project:
- *   pdfRouterStatus/{fileId}   — per-file processing status
- *   pdfRouterErrors/{fileId}   — errors including Cin7 no-match
- *   pdfRouterActivity          — recent activity log
- *
- * Updates in real-time via Firestore listeners — no polling needed.
  */
 
 import { useEffect, useState, useRef } from 'react';
@@ -81,40 +74,42 @@ interface ScansFile {
 
 function formatTime(val: { seconds: number } | string | undefined): string {
   if (!val) return '—';
-  const date = typeof val === 'string'
-    ? new Date(val)
-    : new Date(val.seconds * 1000);
+  const date = typeof val === 'string' ? new Date(val) : new Date(val.seconds * 1000);
   if (isNaN(date.getTime())) return '—';
   return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
 function formatDate(val: { seconds: number } | string | undefined): string {
   if (!val) return '—';
-  const date = typeof val === 'string'
-    ? new Date(val)
-    : new Date(val.seconds * 1000);
+  const date = typeof val === 'string' ? new Date(val) : new Date(val.seconds * 1000);
   if (isNaN(date.getTime())) return '—';
   return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 function statusColour(status: string): string {
   switch (status) {
-    case 'complete':    return '#22c55e';
-    case 'processing':  return '#3b82f6';
-    case 'detected':    return '#f59e0b';
-    case 'error':       return '#ef4444';
-    default:            return '#94a3b8';
+    case 'complete':   return '#22c55e';
+    case 'processing': return '#3b82f6';
+    case 'detected':   return '#f59e0b';
+    case 'error':      return '#ef4444';
+    default:           return '#94a3b8';
   }
 }
 
 function statusLabel(status: string): string {
   switch (status) {
-    case 'complete':    return 'Complete';
-    case 'processing':  return 'Processing';
-    case 'detected':    return 'Detected';
-    case 'error':       return 'Error';
-    default:            return status;
+    case 'complete':   return 'Complete';
+    case 'processing': return 'Processing';
+    case 'detected':   return 'Detected';
+    case 'error':      return 'Error';
+    default:           return status;
   }
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -140,10 +135,7 @@ function ProgressBar({ completed, total }: { completed: number; total: number })
   return (
     <div className="flex items-center gap-2">
       <div className="flex-1 h-1.5 rounded-full" style={{ background: '#e2e8f0' }}>
-        <div
-          className="h-1.5 rounded-full transition-all duration-500"
-          style={{ width: `${pct}%`, background: '#3b82f6' }}
-        />
+        <div className="h-1.5 rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: '#3b82f6' }} />
       </div>
       <span className="font-inter text-xs" style={{ color: '#64748b' }}>{completed}/{total}</span>
     </div>
@@ -163,9 +155,9 @@ function FileCard({ file, expanded, onToggle }: {
     <div
       className="rounded-xl border transition-all duration-200"
       style={{
-        background:   '#ffffff',
-        borderColor:  expanded ? colour + '40' : '#e2e8f0',
-        boxShadow:    expanded ? `0 0 0 1px ${colour}20` : 'none',
+        background:  '#ffffff',
+        borderColor: expanded ? colour + '40' : '#e2e8f0',
+        boxShadow:   expanded ? `0 0 0 1px ${colour}20` : 'none',
       }}
     >
       <button onClick={onToggle} className="w-full flex items-center gap-3 p-3.5 text-left">
@@ -311,80 +303,58 @@ function FileCard({ file, expanded, onToggle }: {
   );
 }
 
-// ── Compact Pipeline Bar ──────────────────────────────────────────────────────
+// ── Unprocessed File Card — same style as FileCard ────────────────────────────
 
-const PIPELINE_STAGES = [
-  { id: 'scan',   label: 'Scan',   colour: '#6366f1', event: 'file_detected'   },
-  { id: 'split',  label: 'Split',  colour: '#3b82f6', event: 'file_processing' },
-  { id: 'make',   label: 'Make',   colour: '#f59e0b', event: 'page_dispatched' },
-  { id: 'claude', label: 'Claude', colour: '#8b5cf6', event: 'page_returned'   },
-  { id: 'cin7',   label: 'Cin7',   colour: '#0ea5e9', event: 'cin7_matched'    },
-  { id: 'drive',  label: 'Drive',  colour: '#22c55e', event: 'file_complete'   },
-];
-
-function CompactPipeline({ activity, processingCount }: {
-  activity: ActivityEntry[];
-  processingCount: number;
+function UnprocessedCard({ file, triggering, triggered, onTrigger }: {
+  file: ScansFile;
+  triggering: boolean;
+  triggered: boolean;
+  onTrigger: () => void;
 }) {
-  const lastEvent  = activity[0]?.event as string | undefined;
-  const activeIdx  = PIPELINE_STAGES.findIndex(s => s.event === lastEvent);
-  const isRunning  = processingCount > 0;
-
   return (
     <div
-      className="rounded-xl px-4 py-2.5 mb-5 flex items-center gap-3"
-      style={{ background: '#ffffff', border: '1px solid #e2e8f0' }}
+      className="rounded-xl border transition-all duration-200"
+      style={{ background: '#ffffff', borderColor: '#e2e8f0' }}
     >
-      {/* Status dot */}
-      <div className="flex items-center gap-1.5 flex-shrink-0">
-        <div
-          className="w-1.5 h-1.5 rounded-full"
+      <div className="w-full flex items-center gap-3 p-3.5">
+        {/* Status dot — indigo for unprocessed */}
+        <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: '#6366f1' }} />
+        <div className="flex-1 min-w-0">
+          <p className="font-inter text-sm font-medium truncate" style={{ color: '#1e293b' }}>
+            {file.name}
+          </p>
+          <p className="font-inter text-xs mt-0.5" style={{ color: '#94a3b8' }}>
+            {formatSize(file.sizeBytes)} · {new Date(file.createdAt).toLocaleString('en-GB', {
+              day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+            })}
+          </p>
+        </div>
+        {/* Status badge matching the pattern */}
+        <span
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-inter text-xs font-medium"
+          style={{ background: '#eef2ff', color: '#6366f1', border: '1px solid #c7d2fe' }}
+        >
+          <Clock className="w-2.5 h-2.5" />
+          Waiting
+        </span>
+        {/* Process button */}
+        <button
+          onClick={onTrigger}
+          disabled={triggering || triggered}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-inter text-xs font-medium transition-all flex-shrink-0 ml-1"
           style={{
-            background: isRunning ? '#22c55e' : '#cbd5e1',
-            boxShadow:  isRunning ? '0 0 0 3px #22c55e20' : 'none',
-            animation:  isRunning ? 'pulse 2s infinite' : 'none',
+            background: triggered  ? '#f0fdf4' : triggering ? '#f1f5f9' : '#6366f1',
+            color:      triggered  ? '#16a34a'  : triggering ? '#94a3b8'  : '#ffffff',
+            border:     triggered  ? '1px solid #bbf7d0' : 'none',
+            cursor:     triggered || triggering ? 'default' : 'pointer',
           }}
-        />
-        <span className="font-inter text-xs font-medium" style={{ color: '#94a3b8' }}>Pipeline</span>
+        >
+          {triggering ? <Loader2 className="w-3 h-3 animate-spin" />
+            : triggered ? <CheckCircle2 className="w-3 h-3" />
+            : <Play className="w-3 h-3" />}
+          {triggered ? 'Triggered' : triggering ? 'Sending...' : 'Process'}
+        </button>
       </div>
-
-      <div className="w-px h-3 flex-shrink-0" style={{ background: '#e2e8f0' }} />
-
-      {/* Stage pills */}
-      <div className="flex items-center gap-1 flex-1">
-        {PIPELINE_STAGES.map((stage, idx) => {
-          const isActive = idx === activeIdx && isRunning;
-          const isPast   = isRunning && activeIdx > idx;
-          return (
-            <div key={stage.id} className="flex items-center">
-              <span
-                className="font-inter text-xs px-2 py-0.5 rounded-full transition-all duration-300"
-                style={{
-                  background: isActive ? stage.colour : isPast ? `${stage.colour}15` : 'transparent',
-                  color:      isActive ? '#ffffff'     : isPast ? stage.colour       : '#cbd5e1',
-                  fontWeight: isActive ? 600 : 400,
-                  border:     isActive ? `1px solid ${stage.colour}` : '1px solid transparent',
-                }}
-              >
-                {stage.label}
-              </span>
-              {idx < PIPELINE_STAGES.length - 1 && (
-                <span className="mx-0.5 text-xs" style={{ color: isPast ? '#cbd5e1' : '#e2e8f0' }}>›</span>
-              )}
-            </div>
-          );
-        })}
-        <span className="ml-1 text-xs" style={{ color: isRunning ? '#22c55e' : '#e2e8f0' }}>↺</span>
-      </div>
-
-      {/* Last file name or idle */}
-      <span className="font-inter text-xs flex-shrink-0 truncate" style={{ color: '#94a3b8', maxWidth: '200px' }}>
-        {isRunning && activity[0]?.fileName
-          ? String(activity[0].fileName)
-          : isRunning
-            ? 'Running...'
-            : 'Idle'}
-      </span>
     </div>
   );
 }
@@ -429,12 +399,6 @@ function UnprocessedFilesView() {
 
   useEffect(() => { fetchFiles(); }, []);
 
-  function formatSize(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -473,47 +437,177 @@ function UnprocessedFilesView() {
     <div>
       <div className="flex items-center justify-between mb-3">
         <p className="font-inter text-xs" style={{ color: '#94a3b8' }}>
-          {files.length} PDF{files.length !== 1 ? 's' : ''} waiting. The router picks these up automatically, or trigger manually below.
+          {files.length} PDF{files.length !== 1 ? 's' : ''} waiting in Scans. Router picks these up automatically, or trigger manually.
         </p>
         <button onClick={fetchFiles} className="flex items-center gap-1 font-inter text-xs font-medium" style={{ color: '#64748b' }}>
           <RefreshCw className="w-3 h-3" /> Refresh
         </button>
       </div>
       <div className="space-y-2">
-        {files.map(file => {
-          const isTriggering = triggering === file.id;
-          const wasTriggered = triggered.has(file.id);
+        {files.map(file => (
+          <UnprocessedCard
+            key={file.id}
+            file={file}
+            triggering={triggering === file.id}
+            triggered={triggered.has(file.id)}
+            onTrigger={() => triggerProcessing(file)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Pipeline Stage Cards ──────────────────────────────────────────────────────
+
+const PIPELINE_STAGES = [
+  { id: 'scan',   label: 'OneDrive Scan',   event: 'file_detected',   nextEvent: 'file_processing' },
+  { id: 'split',  label: 'PDF Split',        event: 'file_processing', nextEvent: 'page_dispatched' },
+  { id: 'make',   label: 'Make.com',         event: 'page_dispatched', nextEvent: 'page_returned'   },
+  { id: 'claude', label: 'Claude Extract',   event: 'page_returned',   nextEvent: 'cin7_matched'    },
+  { id: 'cin7',   label: 'Cin7 Match',       event: 'cin7_matched',    nextEvent: 'file_complete'   },
+  { id: 'drive',  label: 'File to Drive',    event: 'file_complete',   nextEvent: null              },
+];
+
+// State for a stage card: 'idle' | 'active' | 'done'
+type StageState = 'idle' | 'active' | 'done';
+
+function PipelineStageCards({ activity, processingCount }: {
+  activity: ActivityEntry[];
+  processingCount: number;
+}) {
+  const [stageStates, setStageStates] = useState<Record<string, StageState>>(
+    Object.fromEntries(PIPELINE_STAGES.map(s => [s.id, 'idle']))
+  );
+  const doneTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const prevEventRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    const lastEvent = activity[0]?.event as string | undefined;
+    if (!lastEvent || lastEvent === prevEventRef.current) return;
+    prevEventRef.current = lastEvent;
+
+    if (!processingCount && lastEvent !== 'file_complete') return;
+
+    const activeIdx = PIPELINE_STAGES.findIndex(s => s.event === lastEvent);
+    if (activeIdx === -1) return;
+
+    setStageStates(prev => {
+      const next = { ...prev };
+
+      // Mark previous stage as done (the one before current)
+      if (activeIdx > 0) {
+        const prevStage = PIPELINE_STAGES[activeIdx - 1];
+        if (next[prevStage.id] === 'active') {
+          next[prevStage.id] = 'done';
+          // Reset to idle after 2 seconds
+          if (doneTimers.current[prevStage.id]) clearTimeout(doneTimers.current[prevStage.id]);
+          doneTimers.current[prevStage.id] = setTimeout(() => {
+            setStageStates(s => ({ ...s, [prevStage.id]: 'idle' }));
+          }, 2000);
+        }
+      }
+
+      // Mark current stage as active
+      next[PIPELINE_STAGES[activeIdx].id] = 'active';
+
+      // If this is the final stage (file_complete), mark it done after 2s too
+      if (lastEvent === 'file_complete') {
+        const finalId = PIPELINE_STAGES[activeIdx].id;
+        if (doneTimers.current[finalId]) clearTimeout(doneTimers.current[finalId]);
+        doneTimers.current[finalId] = setTimeout(() => {
+          setStageStates(s => ({ ...s, [finalId]: 'done' }));
+          // Then reset all to idle after another 2s
+          setTimeout(() => {
+            setStageStates(Object.fromEntries(PIPELINE_STAGES.map(st => [st.id, 'idle'])));
+          }, 2000);
+        }, 500);
+      }
+
+      return next;
+    });
+  }, [activity, processingCount]);
+
+  // Clean up timers on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(doneTimers.current).forEach(t => clearTimeout(t));
+    };
+  }, []);
+
+  const isRunning = processingCount > 0;
+
+  return (
+    <div className="rounded-xl" style={{ background: '#ffffff', border: '1px solid #e2e8f0' }}>
+      <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ borderColor: '#f1f5f9' }}>
+        <div
+          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+          style={{
+            background: isRunning ? '#22c55e' : '#cbd5e1',
+            boxShadow:  isRunning ? '0 0 0 3px #22c55e20' : 'none',
+            animation:  isRunning ? 'pulse 2s infinite' : 'none',
+          }}
+        />
+        <span className="font-sora font-semibold text-sm" style={{ color: '#1e293b' }}>
+          Automation Pipeline
+        </span>
+        <span className="font-inter text-xs ml-1" style={{ color: '#94a3b8' }}>
+          {isRunning ? `${processingCount} file${processingCount !== 1 ? 's' : ''} processing` : 'Idle'}
+        </span>
+      </div>
+
+      <div className="p-3 grid grid-cols-2 gap-2">
+        {PIPELINE_STAGES.map(stage => {
+          const state = stageStates[stage.id];
+          const isActive = state === 'active';
+          const isDone   = state === 'done';
+
           return (
             <div
-              key={file.id}
-              className="rounded-xl border flex items-center gap-3 p-3.5"
-              style={{ background: '#ffffff', borderColor: '#e2e8f0' }}
+              key={stage.id}
+              className="rounded-lg p-3 flex flex-col justify-between transition-all duration-500"
+              style={{
+                background: isActive ? '#fff7ed'
+                           : isDone   ? '#f0fdf4'
+                           : '#f8fafc',
+                border: isActive ? '1px solid #fed7aa'
+                       : isDone   ? '1px solid #bbf7d0'
+                       : '1px solid #e2e8f0',
+                minHeight: '60px',
+              }}
             >
-              <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: '#6366f1' }} />
-              <div className="flex-1 min-w-0">
-                <p className="font-inter text-sm font-medium truncate" style={{ color: '#1e293b' }}>{file.name}</p>
-                <p className="font-inter text-xs mt-0.5" style={{ color: '#94a3b8' }}>
-                  {formatSize(file.sizeBytes)} · {new Date(file.createdAt).toLocaleString('en-GB', {
-                    day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
-                  })}
+              <div className="flex items-start justify-between gap-1">
+                <p
+                  className="font-inter text-xs font-medium leading-tight"
+                  style={{
+                    color: isActive ? '#c2410c'
+                         : isDone   ? '#15803d'
+                         : '#94a3b8',
+                  }}
+                >
+                  {stage.label}
                 </p>
+                <div
+                  className="w-2 h-2 rounded-full flex-shrink-0 mt-0.5 transition-all duration-500"
+                  style={{
+                    background: isActive ? '#f97316'
+                               : isDone   ? '#22c55e'
+                               : '#e2e8f0',
+                    boxShadow: isActive ? '0 0 0 3px #f9731620' : 'none',
+                    animation:  isActive ? 'pulse 1.5s infinite' : 'none',
+                  }}
+                />
               </div>
-              <button
-                onClick={() => triggerProcessing(file)}
-                disabled={isTriggering || wasTriggered}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-inter text-xs font-medium transition-all flex-shrink-0"
+              <p
+                className="font-inter text-xs mt-1"
                 style={{
-                  background: wasTriggered ? '#f0fdf4' : isTriggering ? '#f1f5f9' : '#6366f1',
-                  color:      wasTriggered ? '#16a34a'  : isTriggering ? '#94a3b8'  : '#ffffff',
-                  border:     wasTriggered ? '1px solid #bbf7d0' : 'none',
-                  cursor:     wasTriggered || isTriggering ? 'default' : 'pointer',
+                  color: isActive ? '#ea580c'
+                       : isDone   ? '#16a34a'
+                       : '#cbd5e1',
                 }}
               >
-                {isTriggering ? <Loader2 className="w-3 h-3 animate-spin" />
-                  : wasTriggered ? <CheckCircle2 className="w-3 h-3" />
-                  : <Play className="w-3 h-3" />}
-                {wasTriggered ? 'Triggered' : isTriggering ? 'Sending...' : 'Process'}
-              </button>
+                {isActive ? 'Running...' : isDone ? 'Complete' : 'Waiting'}
+              </p>
             </div>
           );
         })}
@@ -542,7 +636,7 @@ export default function PDFRouterStatus() {
 
     async function connect() {
       try {
-        const { initializeApp, getApps } = await import('firebase/app');
+        const { initializeApp, getApps }    = await import('firebase/app');
         const { getFirestore, collection, onSnapshot, query, orderBy, limit } = await import('firebase/firestore');
 
         const projectId  = import.meta.env.VITE_PDF_ROUTER_FIREBASE_PROJECT_ID;
@@ -598,10 +692,7 @@ export default function PDFRouterStatus() {
     };
   }, []);
 
-  const filtered = files.filter(f => {
-    if (filter === 'all') return true;
-    return f.status === filter;
-  });
+  const filtered = files.filter(f => filter === 'all' || f.status === filter);
 
   const counts = {
     all:        files.length,
@@ -621,207 +712,219 @@ export default function PDFRouterStatus() {
   ];
 
   return (
-    <div className="h-full overflow-y-auto" style={{ background: '#f8fafc', padding: '24px' }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+    <div className="h-full flex flex-col" style={{ background: '#f8fafc' }}>
 
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="font-sora font-bold text-2xl" style={{ color: '#1e293b' }}>PDF Router</h1>
-            <p className="font-inter text-sm mt-1" style={{ color: '#64748b' }}>Live processing status from the PDF Router</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div
-              className="w-2 h-2 rounded-full"
-              style={{
-                background: connected ? '#22c55e' : connError ? '#ef4444' : '#f59e0b',
-                boxShadow:  connected ? '0 0 0 4px #22c55e25' : 'none',
-                animation:  connected ? 'pulse 2s infinite' : 'none',
-              }}
-            />
-            <span className="font-inter text-xs" style={{ color: '#64748b' }}>
-              {connected ? 'Live' : connError ? 'Disconnected' : 'Connecting...'}
-            </span>
-          </div>
-        </div>
+      {/* ── Fixed top section — header + stats ── */}
+      <div style={{ padding: '24px 24px 0', flexShrink: 0 }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
 
-        {/* Connection error */}
-        {connError && (
-          <div className="rounded-xl p-4 mb-6 flex items-start gap-3" style={{ background: '#fef2f2', border: '1px solid #fecaca' }}>
-            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#ef4444' }} />
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <p className="font-inter text-sm font-semibold" style={{ color: '#dc2626' }}>Cannot connect to PDF Router Firebase</p>
-              <pre className="font-inter text-xs mt-1 whitespace-pre-wrap" style={{ color: '#b91c1c' }}>{connError}</pre>
+              <h1 className="font-sora font-bold text-2xl" style={{ color: '#1e293b' }}>PDF Router</h1>
+              <p className="font-inter text-sm mt-1" style={{ color: '#64748b' }}>Live processing status from the PDF Router</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div
+                className="w-2 h-2 rounded-full"
+                style={{
+                  background: connected ? '#22c55e' : connError ? '#ef4444' : '#f59e0b',
+                  boxShadow:  connected ? '0 0 0 4px #22c55e25' : 'none',
+                  animation:  connected ? 'pulse 2s infinite' : 'none',
+                }}
+              />
+              <span className="font-inter text-xs" style={{ color: '#64748b' }}>
+                {connected ? 'Live' : connError ? 'Disconnected' : 'Connecting...'}
+              </span>
             </div>
           </div>
-        )}
 
-        {/* Stats row */}
-        <div className="grid grid-cols-4 gap-3 mb-5">
-          {[
-            { label: 'Total',      value: counts.all,       colour: '#3b82f6', icon: FileText      },
-            { label: 'Processing', value: counts.processing, colour: '#f59e0b', icon: Loader2       },
-            { label: 'Complete',   value: counts.complete,   colour: '#22c55e', icon: CheckCheck    },
-            { label: 'Errors',     value: counts.error,      colour: '#ef4444', icon: AlertTriangle },
-          ].map(({ label, value, colour, icon: Icon }) => (
-            <div key={label} className="rounded-xl p-4" style={{ background: '#ffffff', border: '1px solid #e2e8f0' }}>
-              <div className="flex items-center gap-2 mb-2">
-                <Icon className="w-4 h-4" style={{ color: colour }} />
-                <span className="font-inter text-xs" style={{ color: '#64748b' }}>{label}</span>
+          {/* Connection error */}
+          {connError && (
+            <div className="rounded-xl p-4 mb-5 flex items-start gap-3" style={{ background: '#fef2f2', border: '1px solid #fecaca' }}>
+              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#ef4444' }} />
+              <div>
+                <p className="font-inter text-sm font-semibold" style={{ color: '#dc2626' }}>Cannot connect to PDF Router Firebase</p>
+                <pre className="font-inter text-xs mt-1 whitespace-pre-wrap" style={{ color: '#b91c1c' }}>{connError}</pre>
               </div>
-              <p className="font-sora font-bold text-2xl" style={{ color: '#1e293b' }}>{value}</p>
             </div>
-          ))}
+          )}
+
+          {/* Stats row */}
+          <div className="grid grid-cols-4 gap-3 mb-5">
+            {[
+              { label: 'Total',      value: counts.all,       colour: '#3b82f6', icon: FileText      },
+              { label: 'Processing', value: counts.processing, colour: '#f59e0b', icon: Loader2       },
+              { label: 'Complete',   value: counts.complete,   colour: '#22c55e', icon: CheckCheck    },
+              { label: 'Errors',     value: counts.error,      colour: '#ef4444', icon: AlertTriangle },
+            ].map(({ label, value, colour, icon: Icon }) => (
+              <div key={label} className="rounded-xl p-4" style={{ background: '#ffffff', border: '1px solid #e2e8f0' }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Icon className="w-4 h-4" style={{ color: colour }} />
+                  <span className="font-inter text-xs" style={{ color: '#64748b' }}>{label}</span>
+                </div>
+                <p className="font-sora font-bold text-2xl" style={{ color: '#1e293b' }}>{value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Filter tabs */}
+          <div className="flex items-center gap-2 mb-4">
+            {tabs.map(tab => {
+              const isActive = filter === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setFilter(tab.id)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-inter text-xs font-medium transition-all"
+                  style={{
+                    background: isActive ? '#1e293b' : '#ffffff',
+                    color:      isActive ? '#ffffff'  : '#64748b',
+                    border:     `1px solid ${isActive ? '#1e293b' : '#e2e8f0'}`,
+                  }}
+                >
+                  {tab.id === 'unprocessed' && (
+                    <Inbox className="w-3 h-3" style={{ color: isActive ? '#ffffff' : '#6366f1' }} />
+                  )}
+                  {tab.label}
+                  {tab.count !== undefined && tab.count > 0 && (
+                    <span
+                      className="px-1.5 py-0.5 rounded-full text-xs"
+                      style={{
+                        background: isActive ? '#ffffff25' : '#f1f5f9',
+                        color:      isActive ? '#ffffff'    : '#64748b',
+                      }}
+                    >
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
+      </div>
 
-        {/* Compact pipeline bar */}
-        <CompactPipeline activity={activity} processingCount={counts.processing} />
+      {/* ── Scrollable content area ── */}
+      <div className="flex-1 overflow-y-auto" style={{ padding: '0 24px 24px' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          <div className="grid gap-6" style={{ gridTemplateColumns: '1fr 340px' }}>
 
-        <div className="grid gap-6" style={{ gridTemplateColumns: '1fr 340px' }}>
+            {/* Left — file list */}
+            <div>
+              {/* Unprocessed tab */}
+              {filter === 'unprocessed' && <UnprocessedFilesView />}
 
-          {/* Left — tabs + content */}
-          <div>
-            {/* Filter tabs */}
-            <div className="flex items-center gap-2 mb-4">
-              {tabs.map(tab => {
-                const isActive = filter === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setFilter(tab.id)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-inter text-xs font-medium transition-all"
-                    style={{
-                      background: isActive ? '#1e293b' : '#ffffff',
-                      color:      isActive ? '#ffffff'  : '#64748b',
-                      border:     `1px solid ${isActive ? '#1e293b' : '#e2e8f0'}`,
-                    }}
-                  >
-                    {tab.id === 'unprocessed' && (
-                      <Inbox className="w-3 h-3" style={{ color: isActive ? '#ffffff' : '#6366f1' }} />
-                    )}
-                    {tab.label}
-                    {tab.count !== undefined && tab.count > 0 && (
-                      <span
-                        className="px-1.5 py-0.5 rounded-full text-xs"
-                        style={{
-                          background: isActive ? '#ffffff25' : '#f1f5f9',
-                          color:      isActive ? '#ffffff'    : '#64748b',
-                        }}
-                      >
-                        {tab.count}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Unprocessed tab */}
-            {filter === 'unprocessed' && <UnprocessedFilesView />}
-
-            {/* File cards — all other tabs */}
-            {filter !== 'unprocessed' && (
-              loading ? (
-                <div className="flex items-center justify-center py-16">
-                  <Loader2 className="w-6 h-6 animate-spin" style={{ color: '#94a3b8' }} />
-                </div>
-              ) : filtered.length === 0 ? (
-                <div className="rounded-xl p-12 text-center" style={{ background: '#ffffff', border: '1px solid #e2e8f0' }}>
-                  <FileText className="w-10 h-10 mx-auto mb-3" style={{ color: '#cbd5e1' }} />
-                  <p className="font-inter text-sm font-medium" style={{ color: '#94a3b8' }}>
-                    {filter === 'all' ? 'No files processed yet' : `No ${filter} files`}
-                  </p>
-                  <p className="font-inter text-xs mt-1" style={{ color: '#cbd5e1' }}>
-                    Files will appear here as the PDF Router processes them
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {filtered.map(file => (
-                    <FileCard
-                      key={file.fileId}
-                      file={file}
-                      expanded={expandedId === file.fileId}
-                      onToggle={() => setExpandedId(expandedId === file.fileId ? null : file.fileId)}
-                    />
-                  ))}
-                </div>
-              )
-            )}
-          </div>
-
-          {/* Right — Activity feed + Errors */}
-          <div className="space-y-4">
-
-            {recentErrors.length > 0 && (
-              <div className="rounded-xl" style={{ background: '#ffffff', border: '1px solid #e2e8f0' }}>
-                <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ borderColor: '#f1f5f9' }}>
-                  <AlertCircle className="w-4 h-4" style={{ color: '#ef4444' }} />
-                  <span className="font-sora font-semibold text-sm" style={{ color: '#1e293b' }}>Recent Errors</span>
-                  <span className="ml-auto px-1.5 py-0.5 rounded-full font-inter text-xs" style={{ background: '#fef2f2', color: '#ef4444' }}>
-                    {recentErrors.length}
-                  </span>
-                </div>
-                <div className="p-3 space-y-2">
-                  {recentErrors.map((err, i) => (
-                    <div key={i} className="rounded-lg p-3" style={{ background: '#fef2f2', border: '1px solid #fecaca' }}>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="px-1.5 py-0.5 rounded text-xs font-mono font-medium" style={{ background: '#fee2e2', color: '#dc2626' }}>
-                          {err.type}
-                        </span>
-                        <span className="font-inter text-xs" style={{ color: '#94a3b8' }}>{formatTime(err.createdAt)}</span>
-                      </div>
-                      <p className="font-inter text-xs" style={{ color: '#b91c1c' }}>{err.message}</p>
-                      {err.searchName && (
-                        <p className="font-inter text-xs mt-1" style={{ color: '#94a3b8' }}>
-                          Searched for: <span className="font-medium" style={{ color: '#64748b' }}>{err.searchName}</span>
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="rounded-xl" style={{ background: '#ffffff', border: '1px solid #e2e8f0' }}>
-              <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ borderColor: '#f1f5f9' }}>
-                <Activity className="w-4 h-4" style={{ color: '#3b82f6' }} />
-                <span className="font-sora font-semibold text-sm" style={{ color: '#1e293b' }}>Activity Feed</span>
-              </div>
-              <div className="p-3">
-                {activity.length === 0 ? (
-                  <p className="font-inter text-xs text-center py-4" style={{ color: '#94a3b8' }}>No recent activity</p>
+              {/* All other tabs */}
+              {filter !== 'unprocessed' && (
+                loading ? (
+                  <div className="flex items-center justify-center py-16">
+                    <Loader2 className="w-6 h-6 animate-spin" style={{ color: '#94a3b8' }} />
+                  </div>
+                ) : filtered.length === 0 ? (
+                  <div className="rounded-xl p-12 text-center" style={{ background: '#ffffff', border: '1px solid #e2e8f0' }}>
+                    <FileText className="w-10 h-10 mx-auto mb-3" style={{ color: '#cbd5e1' }} />
+                    <p className="font-inter text-sm font-medium" style={{ color: '#94a3b8' }}>
+                      {filter === 'all' ? 'No files processed yet' : `No ${filter} files`}
+                    </p>
+                    <p className="font-inter text-xs mt-1" style={{ color: '#cbd5e1' }}>
+                      Files will appear here as the PDF Router processes them
+                    </p>
+                  </div>
                 ) : (
                   <div className="space-y-2">
-                    {activity.map((a, i) => (
-                      <div key={i} className="flex items-start gap-2.5">
-                        <div
-                          className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
-                          style={{
-                            background: a.event === 'file_complete' ? '#22c55e'
-                              : a.event === 'cin7_no_match' ? '#f59e0b'
-                              : '#3b82f6',
-                          }}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-inter text-xs" style={{ color: '#1e293b' }}>
-                            {a.event === 'file_detected' && 'New file detected'}
-                            {a.event === 'file_complete' && 'File processing complete'}
-                            {a.event === 'cin7_no_match' && 'Cin7 match not found'}
-                            {!['file_detected', 'file_complete', 'cin7_no_match'].includes(a.event) && a.event}
-                          </p>
-                          {a.fileName && (
-                            <p className="font-inter text-xs truncate" style={{ color: '#64748b' }}>{String(a.fileName)}</p>
-                          )}
+                    {filtered.map(file => (
+                      <FileCard
+                        key={file.fileId}
+                        file={file}
+                        expanded={expandedId === file.fileId}
+                        onToggle={() => setExpandedId(expandedId === file.fileId ? null : file.fileId)}
+                      />
+                    ))}
+                  </div>
+                )
+              )}
+            </div>
+
+            {/* Right — Pipeline stage cards + Activity feed + Errors */}
+            <div className="space-y-4">
+
+              {/* Pipeline stage cards */}
+              <PipelineStageCards activity={activity} processingCount={counts.processing} />
+
+              {/* Recent errors */}
+              {recentErrors.length > 0 && (
+                <div className="rounded-xl" style={{ background: '#ffffff', border: '1px solid #e2e8f0' }}>
+                  <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ borderColor: '#f1f5f9' }}>
+                    <AlertCircle className="w-4 h-4" style={{ color: '#ef4444' }} />
+                    <span className="font-sora font-semibold text-sm" style={{ color: '#1e293b' }}>Recent Errors</span>
+                    <span className="ml-auto px-1.5 py-0.5 rounded-full font-inter text-xs" style={{ background: '#fef2f2', color: '#ef4444' }}>
+                      {recentErrors.length}
+                    </span>
+                  </div>
+                  <div className="p-3 space-y-2">
+                    {recentErrors.map((err, i) => (
+                      <div key={i} className="rounded-lg p-3" style={{ background: '#fef2f2', border: '1px solid #fecaca' }}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="px-1.5 py-0.5 rounded text-xs font-mono font-medium" style={{ background: '#fee2e2', color: '#dc2626' }}>
+                            {err.type}
+                          </span>
+                          <span className="font-inter text-xs" style={{ color: '#94a3b8' }}>{formatTime(err.createdAt)}</span>
                         </div>
-                        <span className="font-inter text-xs flex-shrink-0" style={{ color: '#94a3b8' }}>
-                          {formatTime(a.createdAt)}
-                        </span>
+                        <p className="font-inter text-xs" style={{ color: '#b91c1c' }}>{err.message}</p>
+                        {err.searchName && (
+                          <p className="font-inter text-xs mt-1" style={{ color: '#94a3b8' }}>
+                            Searched for: <span className="font-medium" style={{ color: '#64748b' }}>{err.searchName}</span>
+                          </p>
+                        )}
                       </div>
                     ))}
                   </div>
-                )}
+                </div>
+              )}
+
+              {/* Activity feed */}
+              <div className="rounded-xl" style={{ background: '#ffffff', border: '1px solid #e2e8f0' }}>
+                <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ borderColor: '#f1f5f9' }}>
+                  <Activity className="w-4 h-4" style={{ color: '#3b82f6' }} />
+                  <span className="font-sora font-semibold text-sm" style={{ color: '#1e293b' }}>Activity Feed</span>
+                </div>
+                <div className="p-3">
+                  {activity.length === 0 ? (
+                    <p className="font-inter text-xs text-center py-4" style={{ color: '#94a3b8' }}>No recent activity</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {activity.map((a, i) => (
+                        <div key={i} className="flex items-start gap-2.5">
+                          <div
+                            className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
+                            style={{
+                              background: a.event === 'file_complete'  ? '#22c55e'
+                                : a.event === 'cin7_no_match' ? '#f59e0b'
+                                : '#3b82f6',
+                            }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-inter text-xs" style={{ color: '#1e293b' }}>
+                              {a.event === 'file_detected'  && 'New file detected'}
+                              {a.event === 'file_complete'  && 'File processing complete'}
+                              {a.event === 'cin7_no_match'  && 'Cin7 match not found'}
+                              {!['file_detected', 'file_complete', 'cin7_no_match'].includes(a.event) && a.event}
+                            </p>
+                            {a.fileName && (
+                              <p className="font-inter text-xs truncate" style={{ color: '#64748b' }}>{String(a.fileName)}</p>
+                            )}
+                          </div>
+                          <span className="font-inter text-xs flex-shrink-0" style={{ color: '#94a3b8' }}>
+                            {formatTime(a.createdAt)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
+
             </div>
           </div>
         </div>
