@@ -63,6 +63,10 @@
       "destination": "/api/scans-list.cjs"
     },
     {
+      "source": "/api/run-diag",
+      "destination": "/api/run-diag.cjs"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }

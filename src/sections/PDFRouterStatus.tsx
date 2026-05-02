@@ -9,7 +9,7 @@ import {
   FileText, CheckCircle2, AlertCircle, Clock,
   ChevronDown, ChevronUp, ExternalLink, CloudUpload,
   FolderOpen, Loader2, AlertTriangle, CheckCheck,
-  Building2, User, Play, RefreshCw, Inbox,
+  Building2, User, Play, RefreshCw, Inbox, Wrench,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -616,9 +616,175 @@ function PipelineStageCards({ activity, processingCount }: {
   );
 }
 
+// ── Diagnostics View ─────────────────────────────────────────────────────────
+
+interface DiagResult {
+  label: string;
+  ok: boolean;
+  detail: string;
+}
+
+interface DiagResponse {
+  ok: boolean;
+  summary: string;
+  results: DiagResult[];
+}
+
+function DiagnosticsView() {
+  const [data, setData]       = useState<DiagResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState<string | null>(null);
+  const [ranAt, setRanAt]     = useState<string | null>(null);
+
+  async function runDiag() {
+    setLoading(true);
+    setError(null);
+    setData(null);
+    try {
+      const res  = await fetch('/api/run-diag');
+      const json = await res.json();
+      setData(json);
+      setRanAt(new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Request failed');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div>
+      {/* Run button + last run time */}
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <p className="font-inter text-sm font-medium" style={{ color: '#1e293b' }}>
+            Connection Diagnostics
+          </p>
+          <p className="font-inter text-xs mt-0.5" style={{ color: '#94a3b8' }}>
+            Tests OneDrive and Cin7 connections on the PDF Router
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          {ranAt && (
+            <span className="font-inter text-xs" style={{ color: '#94a3b8' }}>
+              Last run: {ranAt}
+            </span>
+          )}
+          <button
+            onClick={runDiag}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg font-inter text-sm font-medium transition-all"
+            style={{
+              background: loading ? '#f1f5f9' : '#1e293b',
+              color:      loading ? '#94a3b8'  : '#ffffff',
+              cursor:     loading ? 'default'  : 'pointer',
+            }}
+          >
+            {loading
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : <Wrench className="w-4 h-4" />}
+            {loading ? 'Running...' : 'Run Diagnostics'}
+          </button>
+        </div>
+      </div>
+
+      {/* Fetch error */}
+      {error && (
+        <div className="rounded-xl p-4 flex items-start gap-3 mb-4"
+          style={{ background: '#fef2f2', border: '1px solid #fecaca' }}>
+          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#ef4444' }} />
+          <div>
+            <p className="font-inter text-sm font-semibold" style={{ color: '#dc2626' }}>
+              Could not reach PDF Router
+            </p>
+            <p className="font-inter text-xs mt-1" style={{ color: '#b91c1c' }}>{error}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Loading skeleton */}
+      {loading && (
+        <div className="space-y-2">
+          {[1,2,3,4,5,6].map(i => (
+            <div key={i} className="rounded-xl p-3.5 flex items-center gap-3 animate-pulse"
+              style={{ background: '#f1f5f9', border: '1px solid #e2e8f0' }}>
+              <div className="w-5 h-5 rounded-full flex-shrink-0" style={{ background: '#e2e8f0' }} />
+              <div className="flex-1">
+                <div className="h-3 rounded" style={{ background: '#e2e8f0', width: `${50 + i * 8}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Results */}
+      {!loading && data && (
+        <div className="space-y-2">
+          {/* Summary banner */}
+          <div className="rounded-xl p-3.5 flex items-center gap-3 mb-2"
+            style={{
+              background: data.ok ? '#f0fdf4' : '#fef2f2',
+              border: `1px solid ${data.ok ? '#bbf7d0' : '#fecaca'}`,
+            }}>
+            {data.ok
+              ? <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: '#22c55e' }} />
+              : <AlertCircle  className="w-4 h-4 flex-shrink-0" style={{ color: '#ef4444' }} />}
+            <p className="font-inter text-sm font-semibold"
+              style={{ color: data.ok ? '#15803d' : '#dc2626' }}>
+              {data.summary}
+            </p>
+          </div>
+
+          {/* Individual check rows */}
+          {data.results.map((result, i) => (
+            <div
+              key={i}
+              className="rounded-xl border p-3.5"
+              style={{
+                background:   result.ok ? '#ffffff' : '#fef2f2',
+                borderColor:  result.ok ? '#e2e8f0' : '#fecaca',
+              }}
+            >
+              <div className="flex items-start gap-3">
+                {result.ok
+                  ? <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#22c55e' }} />
+                  : <AlertCircle  className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#ef4444' }} />}
+                <div className="flex-1 min-w-0">
+                  <p className="font-inter text-xs font-semibold"
+                    style={{ color: result.ok ? '#1e293b' : '#dc2626' }}>
+                    {result.label}
+                  </p>
+                  <p className="font-inter text-xs mt-0.5 break-words"
+                    style={{ color: result.ok ? '#64748b' : '#b91c1c' }}>
+                    {result.detail}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Empty state — not yet run */}
+      {!loading && !data && !error && (
+        <div className="rounded-xl p-12 text-center"
+          style={{ background: '#ffffff', border: '1px solid #e2e8f0' }}>
+          <Wrench className="w-10 h-10 mx-auto mb-3" style={{ color: '#cbd5e1' }} />
+          <p className="font-inter text-sm font-medium" style={{ color: '#94a3b8' }}>
+            No diagnostics run yet
+          </p>
+          <p className="font-inter text-xs mt-1" style={{ color: '#cbd5e1' }}>
+            Click Run Diagnostics to test all connections
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
-type FilterType = 'all' | 'processing' | 'complete' | 'error' | 'unprocessed';
+type FilterType = 'all' | 'processing' | 'complete' | 'error' | 'unprocessed' | 'diagnostics';
 
 export default function PDFRouterStatus() {
   const [files, setFiles]           = useState<FileStatus[]>([]);
@@ -709,6 +875,7 @@ export default function PDFRouterStatus() {
     { id: 'complete',    label: 'Complete',    count: counts.complete    },
     { id: 'error',       label: 'Error',       count: counts.error       },
     { id: 'unprocessed', label: 'Unprocessed'                            },
+    { id: 'diagnostics', label: 'Diagnostics'                            },
   ];
 
   return (
@@ -786,6 +953,9 @@ export default function PDFRouterStatus() {
                   {tab.id === 'unprocessed' && (
                     <Inbox className="w-3 h-3" style={{ color: isActive ? '#ffffff' : '#6366f1' }} />
                   )}
+                  {tab.id === 'diagnostics' && (
+                    <Wrench className="w-3 h-3" style={{ color: isActive ? '#ffffff' : '#64748b' }} />
+                  )}
                   {tab.label}
                   {tab.count !== undefined && tab.count > 0 && (
                     <span
@@ -812,11 +982,14 @@ export default function PDFRouterStatus() {
 
             {/* Left — scrollable file list */}
             <div className="overflow-y-auto">
+              {/* Diagnostics tab */}
+              {filter === 'diagnostics' && <DiagnosticsView />}
+
               {/* Unprocessed tab */}
               {filter === 'unprocessed' && <UnprocessedFilesView />}
 
-              {/* All other tabs */}
-              {filter !== 'unprocessed' && (
+              {/* All other tabs — file cards */}
+              {filter !== 'unprocessed' && filter !== 'diagnostics' && (
                 loading ? (
                   <div className="flex items-center justify-center py-16">
                     <Loader2 className="w-6 h-6 animate-spin" style={{ color: '#94a3b8' }} />
