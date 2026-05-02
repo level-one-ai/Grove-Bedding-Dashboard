@@ -346,6 +346,161 @@ function FileCard({ file, expanded, onToggle }: {
   );
 }
 
+// ── Pipeline Visualiser ───────────────────────────────────────────────────────
+
+const PIPELINE_STAGES = [
+  { id: 'scan',      label: 'OneDrive\nScan',      colour: '#6366f1', event: 'file_detected' },
+  { id: 'split',     label: 'PDF\nSplit',           colour: '#3b82f6', event: 'file_processing' },
+  { id: 'make',      label: 'Make.com\nWebhook',    colour: '#f59e0b', event: 'page_dispatched' },
+  { id: 'claude',    label: 'Claude\nExtract',      colour: '#8b5cf6', event: 'page_returned' },
+  { id: 'cin7',      label: 'Cin7\nMatch',          colour: '#0ea5e9', event: 'cin7_matched' },
+  { id: 'file',      label: 'File to\nDrive',       colour: '#22c55e', event: 'file_complete' },
+];
+
+function PipelineVisualiser({
+  activity,
+  processingCount,
+}: {
+  activity: ActivityEntry[];
+  processingCount: number;
+}) {
+  // Work out which stage was most recently active based on activity feed
+  const lastEvent = activity[0]?.event as string | undefined;
+  const activeStageId = PIPELINE_STAGES.find(s => s.event === lastEvent)?.id ?? null;
+
+  // Is the pipeline currently running?
+  const isRunning = processingCount > 0;
+
+  return (
+    <div
+      className="rounded-xl p-4 mb-6"
+      style={{ background: '#ffffff', border: '1px solid #e2e8f0' }}
+    >
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-4">
+        <div
+          className="w-2 h-2 rounded-full flex-shrink-0"
+          style={{
+            background: isRunning ? '#22c55e' : '#cbd5e1',
+            boxShadow: isRunning ? '0 0 0 3px #22c55e20' : 'none',
+            animation: isRunning ? 'pulse 2s infinite' : 'none',
+          }}
+        />
+        <span className="font-sora font-semibold text-sm" style={{ color: '#1e293b' }}>
+          Automation Pipeline
+        </span>
+        <span className="font-inter text-xs ml-1" style={{ color: '#94a3b8' }}>
+          {isRunning ? `Processing ${processingCount} file${processingCount !== 1 ? 's' : ''}` : 'Idle — waiting for new files'}
+        </span>
+      </div>
+
+      {/* Stage nodes */}
+      <div className="flex items-center justify-between">
+        {PIPELINE_STAGES.map((stage, idx) => {
+          const isActive   = stage.id === activeStageId && isRunning;
+          const isPast     = isRunning && PIPELINE_STAGES.findIndex(s => s.id === activeStageId) > idx;
+          const isLast     = idx === PIPELINE_STAGES.length - 1;
+
+          return (
+            <div key={stage.id} className="flex items-center flex-1">
+              {/* Node */}
+              <div className="flex flex-col items-center" style={{ minWidth: '64px' }}>
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500"
+                  style={{
+                    background: isActive  ? stage.colour
+                              : isPast    ? `${stage.colour}30`
+                              : '#f1f5f9',
+                    border: isActive  ? `2px solid ${stage.colour}`
+                          : isPast    ? `2px solid ${stage.colour}60`
+                          : '2px solid #e2e8f0',
+                    boxShadow: isActive ? `0 0 0 4px ${stage.colour}20` : 'none',
+                  }}
+                >
+                  {isPast && !isActive ? (
+                    <CheckCircle2 className="w-4 h-4" style={{ color: stage.colour }} />
+                  ) : (
+                    <span
+                      className="font-sora font-bold text-xs"
+                      style={{ color: isActive ? '#ffffff' : '#94a3b8' }}
+                    >
+                      {idx + 1}
+                    </span>
+                  )}
+                </div>
+                <p
+                  className="font-inter text-center mt-1.5 whitespace-pre-line leading-tight"
+                  style={{
+                    fontSize: '10px',
+                    color: isActive ? stage.colour : isPast ? '#64748b' : '#94a3b8',
+                    fontWeight: isActive ? 600 : 400,
+                  }}
+                >
+                  {stage.label}
+                </p>
+              </div>
+
+              {/* Arrow between nodes */}
+              {!isLast && (
+                <div className="flex-1 flex items-center justify-center" style={{ marginTop: '-16px' }}>
+                  <div
+                    className="h-0.5 w-full transition-all duration-500"
+                    style={{
+                      background: isPast
+                        ? `linear-gradient(90deg, ${PIPELINE_STAGES[idx].colour}60, ${PIPELINE_STAGES[idx + 1].colour}60)`
+                        : '#e2e8f0',
+                    }}
+                  />
+                  <div
+                    style={{
+                      width: 0, height: 0,
+                      borderTop: '4px solid transparent',
+                      borderBottom: '4px solid transparent',
+                      borderLeft: `5px solid ${isPast ? PIPELINE_STAGES[idx + 1].colour + '60' : '#e2e8f0'}`,
+                      flexShrink: 0,
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Loop-back arrow after last node */}
+              {isLast && (
+                <div
+                  className="ml-2 flex items-center gap-1"
+                  style={{ marginTop: '-16px' }}
+                  title="Loops back to scan for next file"
+                >
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <path
+                      d="M15 10 C15 14 5 14 5 10 C5 6 15 6 15 10"
+                      stroke={isRunning ? '#22c55e' : '#cbd5e1'}
+                      strokeWidth="1.5"
+                      fill="none"
+                      strokeDasharray={isRunning ? '3 2' : '0'}
+                    />
+                    <polygon
+                      points="14,7 17,10 14,13"
+                      fill={isRunning ? '#22c55e' : '#cbd5e1'}
+                    />
+                  </svg>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Last event label */}
+      {lastEvent && (
+        <p className="font-inter text-xs mt-3 text-center" style={{ color: '#94a3b8' }}>
+          Last event: <span style={{ color: '#64748b', fontWeight: 500 }}>{lastEvent.replace(/_/g, ' ')}</span>
+          {activity[0]?.fileName ? ` — ${String(activity[0].fileName)}` : ''}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ── Unprocessed Files Panel ───────────────────────────────────────────────────
 
 function UnprocessedFiles() {
@@ -691,6 +846,9 @@ export default function PDFRouterStatus() {
             </div>
           ))}
         </div>
+
+        {/* Pipeline Visualiser */}
+        <PipelineVisualiser activity={activity} processingCount={counts.processing} />
 
         <div className="grid gap-6" style={{ gridTemplateColumns: '1fr 340px' }}>
 
