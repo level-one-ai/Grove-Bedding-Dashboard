@@ -59,6 +59,10 @@
       "destination": "/pdf-router-connection/api/router-status.cjs"
     },
     {
+      "source": "/api/scans-list",
+      "destination": "/api/scans-list.cjs"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }

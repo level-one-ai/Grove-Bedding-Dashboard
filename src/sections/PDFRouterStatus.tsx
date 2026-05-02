@@ -16,7 +16,7 @@ import {
   FileText, CheckCircle2, AlertCircle, Clock,
   ChevronDown, ChevronUp, ExternalLink, CloudUpload,
   FolderOpen, Loader2, Activity, AlertTriangle, CheckCheck,
-  Building2, User,
+  Building2, User, Play, RefreshCw, Inbox,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -69,6 +69,13 @@ interface ActivityEntry {
   fileName?: string;
   createdAt?: { seconds: number } | string;
   [key: string]: unknown;
+}
+
+interface ScansFile {
+  id: string;
+  name: string;
+  sizeBytes: number;
+  createdAt: string;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -339,6 +346,172 @@ function FileCard({ file, expanded, onToggle }: {
   );
 }
 
+// ── Unprocessed Files Panel ───────────────────────────────────────────────────
+
+function UnprocessedFiles() {
+  const [files, setFiles]         = useState<ScansFile[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState<string | null>(null);
+  const [triggering, setTriggering] = useState<string | null>(null); // file id being triggered
+  const [triggered, setTriggered] = useState<Set<string>>(new Set());
+
+  async function fetchFiles() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/scans-list');
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'Failed to list Scans folder');
+      setFiles(data.files || []);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function triggerProcessing(file: ScansFile) {
+    setTriggering(file.id);
+    try {
+      const res = await fetch('/api/scans-list', { method: 'POST' });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'Trigger failed');
+      setTriggered(prev => new Set(prev).add(file.id));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Trigger failed');
+    } finally {
+      setTriggering(null);
+    }
+  }
+
+  useEffect(() => { fetchFiles(); }, []);
+
+  function formatSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  return (
+    <div className="rounded-xl" style={{ background: '#ffffff', border: '1px solid #e2e8f0' }}>
+      {/* Header */}
+      <div
+        className="flex items-center gap-2 px-4 py-3 border-b"
+        style={{ borderColor: '#f1f5f9' }}
+      >
+        <Inbox className="w-4 h-4" style={{ color: '#6366f1' }} />
+        <span className="font-sora font-semibold text-sm" style={{ color: '#1e293b' }}>
+          Unprocessed Files
+        </span>
+        {!loading && (
+          <span
+            className="ml-1 px-1.5 py-0.5 rounded-full font-inter text-xs"
+            style={{
+              background: files.length > 0 ? '#eef2ff' : '#f1f5f9',
+              color: files.length > 0 ? '#6366f1' : '#94a3b8',
+            }}
+          >
+            {files.length}
+          </span>
+        )}
+        <button
+          onClick={fetchFiles}
+          disabled={loading}
+          className="ml-auto p-1 rounded-lg transition-colors"
+          style={{ color: '#94a3b8' }}
+          title="Refresh"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
+
+      <div className="p-3">
+        {/* Error */}
+        {error && (
+          <div
+            className="rounded-lg p-3 mb-3 flex items-start gap-2"
+            style={{ background: '#fef2f2', border: '1px solid #fecaca' }}
+          >
+            <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: '#ef4444' }} />
+            <p className="font-inter text-xs" style={{ color: '#b91c1c' }}>{error}</p>
+          </div>
+        )}
+
+        {/* Loading */}
+        {loading && (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="w-5 h-5 animate-spin" style={{ color: '#94a3b8' }} />
+          </div>
+        )}
+
+        {/* Empty */}
+        {!loading && !error && files.length === 0 && (
+          <div className="text-center py-6">
+            <CheckCircle2 className="w-8 h-8 mx-auto mb-2" style={{ color: '#86efac' }} />
+            <p className="font-inter text-xs font-medium" style={{ color: '#64748b' }}>
+              Scans folder is clear
+            </p>
+            <p className="font-inter text-xs mt-0.5" style={{ color: '#cbd5e1' }}>
+              No unprocessed PDFs waiting
+            </p>
+          </div>
+        )}
+
+        {/* File list */}
+        {!loading && files.length > 0 && (
+          <div className="space-y-2">
+            <p className="font-inter text-xs mb-2" style={{ color: '#94a3b8' }}>
+              These PDFs are in the Scans folder and have not yet been processed.
+              The router will pick them up automatically, or you can trigger processing now.
+            </p>
+            {files.map(file => {
+              const isTriggering = triggering === file.id;
+              const wasTriggered = triggered.has(file.id);
+              return (
+                <div
+                  key={file.id}
+                  className="rounded-lg p-3 flex items-center gap-3"
+                  style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}
+                >
+                  <FileText className="w-4 h-4 flex-shrink-0" style={{ color: '#6366f1' }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-inter text-xs font-medium truncate" style={{ color: '#1e293b' }}>
+                      {file.name}
+                    </p>
+                    <p className="font-inter text-xs mt-0.5" style={{ color: '#94a3b8' }}>
+                      {formatSize(file.sizeBytes)} · {new Date(file.createdAt).toLocaleString('en-GB', {
+                        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+                      })}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => triggerProcessing(file)}
+                    disabled={isTriggering || wasTriggered}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-inter text-xs font-medium transition-all flex-shrink-0"
+                    style={{
+                      background: wasTriggered ? '#f0fdf4' : isTriggering ? '#f1f5f9' : '#6366f1',
+                      color:      wasTriggered ? '#16a34a'  : isTriggering ? '#94a3b8' : '#ffffff',
+                      border:     wasTriggered ? '1px solid #bbf7d0' : 'none',
+                      cursor:     wasTriggered || isTriggering ? 'default' : 'pointer',
+                    }}
+                  >
+                    {isTriggering
+                      ? <Loader2 className="w-3 h-3 animate-spin" />
+                      : wasTriggered
+                        ? <CheckCircle2 className="w-3 h-3" />
+                        : <Play className="w-3 h-3" />}
+                    {wasTriggered ? 'Triggered' : isTriggering ? 'Sending...' : 'Process'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 type FilterType = 'all' | 'processing' | 'complete' | 'error';
@@ -584,8 +757,11 @@ export default function PDFRouterStatus() {
             )}
           </div>
 
-          {/* Right — Activity feed + Errors */}
+          {/* Right — Unprocessed files + Activity feed + Errors */}
           <div className="space-y-4">
+
+            {/* Unprocessed files in Scans folder */}
+            <UnprocessedFiles />
 
             {/* Recent errors */}
             {recentErrors.length > 0 && (
