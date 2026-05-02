@@ -13,21 +13,14 @@
 
 import { useEffect, useState, useRef } from 'react';
 import {
-  FileText, CheckCircle2, AlertCircle, Clock, RefreshCw,
-  ChevronDown, ChevronUp, ExternalLink, X, CloudUpload,
+  FileText, CheckCircle2, AlertCircle, Clock,
+  ChevronDown, ChevronUp, ExternalLink, CloudUpload,
   FolderOpen, Loader2, Activity, AlertTriangle, CheckCheck,
   Building2, User,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface PageStatus {
-  status: string;
-  finalFileName?: string;
-  customerName?: string;
-  ref?: string;
-  completedAt?: string;
-}
 
 interface Cin7Lookup {
   folderName: string;
@@ -421,7 +414,7 @@ export default function PDFRouterStatus() {
         );
         const unsubActivity = onSnapshot(actQ, snap => {
           if (!mounted) return;
-          setActivity(snap.docs.map(d => ({ id: d.id, ...d.data() } as ActivityEntry)));
+          setActivity(snap.docs.map(d => ({ id: d.id, ...d.data() } as unknown as ActivityEntry)));
         });
 
         unsubscribers.current = [unsubStatus, unsubErrors, unsubActivity];
