@@ -8,7 +8,7 @@ import { useEffect, useState, useRef } from 'react';
 import {
   FileText, CheckCircle2, AlertCircle, Clock,
   ChevronDown, ChevronUp, ExternalLink, CloudUpload,
-  FolderOpen, Loader2, Activity, AlertTriangle, CheckCheck,
+  FolderOpen, Loader2, AlertTriangle, CheckCheck,
   Building2, User, Play, RefreshCw, Inbox,
 } from 'lucide-react';
 
@@ -806,12 +806,12 @@ export default function PDFRouterStatus() {
       </div>
 
       {/* ── Scrollable content area ── */}
-      <div className="flex-1 overflow-y-auto" style={{ padding: '0 24px 24px' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <div className="grid gap-6" style={{ gridTemplateColumns: '1fr 340px' }}>
+      <div className="flex-1 overflow-hidden" style={{ padding: '0 24px 24px' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', height: '100%' }}>
+          <div className="grid gap-6 h-full" style={{ gridTemplateColumns: '1fr 340px' }}>
 
-            {/* Left — file list */}
-            <div>
+            {/* Left — scrollable file list */}
+            <div className="overflow-y-auto">
               {/* Unprocessed tab */}
               {filter === 'unprocessed' && <UnprocessedFilesView />}
 
@@ -846,8 +846,8 @@ export default function PDFRouterStatus() {
               )}
             </div>
 
-            {/* Right — Pipeline stage cards + Activity feed + Errors */}
-            <div className="space-y-4">
+            {/* Right — fixed: Pipeline stage cards + Errors */}
+            <div className="space-y-4 overflow-y-auto">
 
               {/* Pipeline stage cards */}
               <PipelineStageCards activity={activity} processingCount={counts.processing} />
@@ -882,48 +882,6 @@ export default function PDFRouterStatus() {
                   </div>
                 </div>
               )}
-
-              {/* Activity feed */}
-              <div className="rounded-xl" style={{ background: '#ffffff', border: '1px solid #e2e8f0' }}>
-                <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ borderColor: '#f1f5f9' }}>
-                  <Activity className="w-4 h-4" style={{ color: '#3b82f6' }} />
-                  <span className="font-sora font-semibold text-sm" style={{ color: '#1e293b' }}>Activity Feed</span>
-                </div>
-                <div className="p-3">
-                  {activity.length === 0 ? (
-                    <p className="font-inter text-xs text-center py-4" style={{ color: '#94a3b8' }}>No recent activity</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {activity.map((a, i) => (
-                        <div key={i} className="flex items-start gap-2.5">
-                          <div
-                            className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
-                            style={{
-                              background: a.event === 'file_complete'  ? '#22c55e'
-                                : a.event === 'cin7_no_match' ? '#f59e0b'
-                                : '#3b82f6',
-                            }}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-inter text-xs" style={{ color: '#1e293b' }}>
-                              {a.event === 'file_detected'  && 'New file detected'}
-                              {a.event === 'file_complete'  && 'File processing complete'}
-                              {a.event === 'cin7_no_match'  && 'Cin7 match not found'}
-                              {!['file_detected', 'file_complete', 'cin7_no_match'].includes(a.event) && a.event}
-                            </p>
-                            {a.fileName && (
-                              <p className="font-inter text-xs truncate" style={{ color: '#64748b' }}>{String(a.fileName)}</p>
-                            )}
-                          </div>
-                          <span className="font-inter text-xs flex-shrink-0" style={{ color: '#94a3b8' }}>
-                            {formatTime(a.createdAt)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
 
             </div>
           </div>
