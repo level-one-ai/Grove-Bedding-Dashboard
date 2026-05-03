@@ -543,80 +543,39 @@ function UnprocessedFilesView() {
 
 // ── Pipeline Stage Cards ──────────────────────────────────────────────────────
 
+// Maps the currentStage field written by scan-now/file-page to a stage card ID
+const STAGE_MAP: Record<string, string> = {
+  downloading:  'scan',
+  splitting:    'split',
+  dispatching:  'make',
+  extracting:   'make',
+  cin7:         'cin7',
+  filing:       'cin7',
+  uploading:    'drive',
+  non_order:    'drive',
+  complete:     'drive',
+};
+
 const PIPELINE_STAGES = [
-  { id: 'scan',   label: 'OneDrive Scan',   event: 'file_detected',   nextEvent: 'file_processing' },
-  { id: 'split',  label: 'PDF Split',        event: 'file_processing', nextEvent: 'page_dispatched' },
-  { id: 'make',   label: 'Make.com',         event: 'page_dispatched', nextEvent: 'page_returned'   },
-  { id: 'claude', label: 'Claude Extract',   event: 'page_returned',   nextEvent: 'cin7_matched'    },
-  { id: 'cin7',   label: 'Cin7 Match',       event: 'cin7_matched',    nextEvent: 'file_complete'   },
-  { id: 'drive',  label: 'File to Drive',    event: 'file_complete',   nextEvent: null              },
+  { id: 'scan',   label: 'OneDrive\nScan'    },
+  { id: 'split',  label: 'PDF\nSplit'         },
+  { id: 'make',   label: 'Make.com\nExtract'  },
+  { id: 'cin7',   label: 'Cin7\nMatch'        },
+  { id: 'drive',  label: 'File to\nDrive'     },
 ];
 
 // State for a stage card: 'idle' | 'active' | 'done'
 type StageState = 'idle' | 'active' | 'done';
 
-function PipelineStageCards({ activity, processingCount }: {
-  activity: ActivityEntry[];
+function PipelineStageCards({ files, processingCount }: {
+  files: FileStatus[];
   processingCount: number;
 }) {
-  const [stageStates, setStageStates] = useState<Record<string, StageState>>(
-    Object.fromEntries(PIPELINE_STAGES.map(s => [s.id, 'idle']))
-  );
-  const doneTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  const prevEventRef = useRef<string | undefined>(undefined);
-
-  useEffect(() => {
-    const lastEvent = activity[0]?.event as string | undefined;
-    if (!lastEvent || lastEvent === prevEventRef.current) return;
-    prevEventRef.current = lastEvent;
-
-    if (!processingCount && lastEvent !== 'file_complete') return;
-
-    const activeIdx = PIPELINE_STAGES.findIndex(s => s.event === lastEvent);
-    if (activeIdx === -1) return;
-
-    setStageStates(prev => {
-      const next = { ...prev };
-
-      // Mark previous stage as done (the one before current)
-      if (activeIdx > 0) {
-        const prevStage = PIPELINE_STAGES[activeIdx - 1];
-        if (next[prevStage.id] === 'active') {
-          next[prevStage.id] = 'done';
-          // Reset to idle after 2 seconds
-          if (doneTimers.current[prevStage.id]) clearTimeout(doneTimers.current[prevStage.id]);
-          doneTimers.current[prevStage.id] = setTimeout(() => {
-            setStageStates(s => ({ ...s, [prevStage.id]: 'idle' }));
-          }, 2000);
-        }
-      }
-
-      // Mark current stage as active
-      next[PIPELINE_STAGES[activeIdx].id] = 'active';
-
-      // If this is the final stage (file_complete), mark it done after 2s too
-      if (lastEvent === 'file_complete') {
-        const finalId = PIPELINE_STAGES[activeIdx].id;
-        if (doneTimers.current[finalId]) clearTimeout(doneTimers.current[finalId]);
-        doneTimers.current[finalId] = setTimeout(() => {
-          setStageStates(s => ({ ...s, [finalId]: 'done' }));
-          // Then reset all to idle after another 2s
-          setTimeout(() => {
-            setStageStates(Object.fromEntries(PIPELINE_STAGES.map(st => [st.id, 'idle'])));
-          }, 2000);
-        }, 500);
-      }
-
-      return next;
-    });
-  }, [activity, processingCount]);
-
-  // Clean up timers on unmount
-  useEffect(() => {
-    return () => {
-      Object.values(doneTimers.current).forEach(t => clearTimeout(t));
-    };
-  }, []);
+  // Find the most recently active processing file's current stage
+  const activeFile = files.find(f => f.status === 'processing');
+  const currentStage = (activeFile as unknown as Record<string, unknown>)?.currentStage as string | undefined;
+  const activeStageId = currentStage ? STAGE_MAP[currentStage] ?? null : null;
+  const activeStageIdx = activeStageId ? PIPELINE_STAGES.findIndex(s => s.id === activeStageId) : -1;
 
   const isRunning = processingCount > 0;
 
@@ -635,61 +594,48 @@ function PipelineStageCards({ activity, processingCount }: {
           Automation Pipeline
         </span>
         <span className="font-inter text-xs ml-1" style={{ color: '#94a3b8' }}>
-          {isRunning ? `${processingCount} file${processingCount !== 1 ? 's' : ''} processing` : 'Idle'}
+          {isRunning
+            ? `${processingCount} file${processingCount !== 1 ? 's' : ''} processing${activeFile?.fileName ? ` — ${String(activeFile.fileName)}` : ''}`
+            : 'Idle'}
         </span>
       </div>
 
-      <div className="p-3 grid grid-cols-2 gap-2">
-        {PIPELINE_STAGES.map(stage => {
-          const state = stageStates[stage.id];
-          const isActive = state === 'active';
-          const isDone   = state === 'done';
+      <div className="p-3 grid grid-cols-2 gap-2 lg:grid-cols-3">
+        {PIPELINE_STAGES.map((stage, idx) => {
+          const isActive = stage.id === activeStageId && isRunning;
+          const isDone   = isRunning && activeStageIdx > idx;
 
           return (
             <div
               key={stage.id}
               className="rounded-lg p-3 flex flex-col justify-between transition-all duration-500"
               style={{
-                background: isActive ? '#fff7ed'
-                           : isDone   ? '#f0fdf4'
-                           : '#f8fafc',
-                border: isActive ? '1px solid #fed7aa'
-                       : isDone   ? '1px solid #bbf7d0'
-                       : '1px solid #e2e8f0',
+                background: isActive ? '#fff7ed' : isDone ? '#f0fdf4' : '#f8fafc',
+                border:     isActive ? '1px solid #fed7aa' : isDone ? '1px solid #bbf7d0' : '1px solid #e2e8f0',
                 minHeight: '60px',
               }}
             >
               <div className="flex items-start justify-between gap-1">
                 <p
-                  className="font-inter text-xs font-medium leading-tight"
-                  style={{
-                    color: isActive ? '#c2410c'
-                         : isDone   ? '#15803d'
-                         : '#94a3b8',
-                  }}
+                  className="font-inter text-xs font-medium leading-tight whitespace-pre-line"
+                  style={{ color: isActive ? '#c2410c' : isDone ? '#15803d' : '#94a3b8' }}
                 >
                   {stage.label}
                 </p>
                 <div
                   className="w-2 h-2 rounded-full flex-shrink-0 mt-0.5 transition-all duration-500"
                   style={{
-                    background: isActive ? '#f97316'
-                               : isDone   ? '#22c55e'
-                               : '#e2e8f0',
-                    boxShadow: isActive ? '0 0 0 3px #f9731620' : 'none',
+                    background: isActive ? '#f97316' : isDone ? '#22c55e' : '#e2e8f0',
+                    boxShadow:  isActive ? '0 0 0 3px #f9731620' : 'none',
                     animation:  isActive ? 'pulse 1.5s infinite' : 'none',
                   }}
                 />
               </div>
               <p
                 className="font-inter text-xs mt-1"
-                style={{
-                  color: isActive ? '#ea580c'
-                       : isDone   ? '#16a34a'
-                       : '#cbd5e1',
-                }}
+                style={{ color: isActive ? '#ea580c' : isDone ? '#16a34a' : '#cbd5e1' }}
               >
-                {isActive ? 'Running...' : isDone ? 'Complete' : 'Waiting'}
+                {isActive ? 'Running...' : isDone ? 'Done' : 'Waiting'}
               </p>
             </div>
           );
@@ -1106,7 +1052,7 @@ export default function PDFRouterStatus() {
             <div className="space-y-4 overflow-y-auto">
 
               {/* Pipeline stage cards */}
-              <PipelineStageCards activity={activity} processingCount={counts.processing} />
+              <PipelineStageCards files={files} processingCount={counts.processing} />
 
               {/* Recent errors */}
               {recentErrors.length > 0 && (
