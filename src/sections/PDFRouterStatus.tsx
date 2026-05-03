@@ -9,7 +9,7 @@ import {
   FileText, CheckCircle2, AlertCircle, Clock,
   ChevronDown, ChevronUp, ExternalLink, CloudUpload,
   FolderOpen, Loader2, AlertTriangle, CheckCheck,
-  Building2, User, Play, RefreshCw, Inbox, Wrench,
+  Building2, User, Play, RefreshCw, Inbox, Wrench, RotateCcw,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -150,6 +150,26 @@ function FileCard({ file, expanded, onToggle }: {
   const colour     = statusColour(file.status);
   const pagesTotal = file.totalPages ?? 0;
   const pagesDone  = file.pagesCompleted ?? 0;
+  const [resetting, setResetting] = useState(false);
+  const [resetDone, setResetDone] = useState(false);
+
+  async function handleReset(e: React.MouseEvent) {
+    e.stopPropagation();
+    setResetting(true);
+    try {
+      await fetch('/api/reset-stuck-file', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileId: file.fileId }),
+      });
+      setResetDone(true);
+      setTimeout(() => setResetDone(false), 3000);
+    } catch {
+      // silent — Firestore listener will reflect the change
+    } finally {
+      setResetting(false);
+    }
+  }
 
   return (
     <div
@@ -178,6 +198,22 @@ function FileCard({ file, expanded, onToggle }: {
           </p>
         </div>
         <StatusBadge status={file.status} />
+        {/* Reset button — only shown for processing files that may be stuck */}
+        {file.status === 'processing' && (
+          <button
+            onClick={handleReset}
+            disabled={resetting || resetDone}
+            title="Reset stuck file — will be reprocessed"
+            className="p-1 rounded-lg transition-colors flex-shrink-0"
+            style={{ color: resetDone ? '#22c55e' : '#94a3b8' }}
+          >
+            {resetting
+              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              : resetDone
+                ? <CheckCircle2 className="w-3.5 h-3.5" />
+                : <RotateCcw className="w-3.5 h-3.5" />}
+          </button>
+        )}
         <span style={{ color: '#94a3b8' }}>
           {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </span>

@@ -63,8 +63,8 @@
       "destination": "/api/scans-list.cjs"
     },
     {
-      "source": "/api/run-diag",
-      "destination": "/api/run-diag.cjs"
+      "source": "/api/reset-stuck-file",
+      "destination": "/api/reset-stuck-file.cjs"
     },
     {
       "source": "/((?!api/).*)",
