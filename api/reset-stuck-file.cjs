@@ -2,10 +2,12 @@
  * api/reset-stuck-file.cjs
  * ─────────────────────────
  * POST /api/reset-stuck-file
- * Body: { fileId: string }
+ * Body: { fileId: string, action?: 'reset' | 'stop' }
  *
- * Proxies a reset request to the PDF Router's /api/reset-file endpoint.
- * Called from the dashboard when a file is stuck in Processing.
+ * reset (default) — clears stuck status so the file is reprocessed
+ * stop            — marks file as stopped/error so it won't be picked up again
+ *
+ * Proxies to the PDF Router's /api/reset-file endpoint.
  */
 
 module.exports = async function handler(req, res) {
@@ -13,7 +15,7 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { fileId } = req.body || {};
+  const { fileId, action = 'reset' } = req.body || {};
   if (!fileId) return res.status(400).json({ error: 'fileId required' });
 
   const routerUrl = process.env.PDF_ROUTER_URL || 'https://grove-pdf-router.vercel.app';
@@ -24,6 +26,7 @@ module.exports = async function handler(req, res) {
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({
         fileId,
+        action,
         secret: 'grove-pdf-router-secret',
       }),
       signal: AbortSignal.timeout(10000),

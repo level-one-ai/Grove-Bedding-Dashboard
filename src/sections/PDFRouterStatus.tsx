@@ -9,7 +9,7 @@ import {
   FileText, CheckCircle2, AlertCircle, Clock,
   ChevronDown, ChevronUp, ExternalLink, CloudUpload,
   FolderOpen, Loader2, AlertTriangle, CheckCheck,
-  Building2, User, Play, RefreshCw, Inbox, Wrench, RotateCcw,
+  Building2, User, Play, RefreshCw, Inbox, Wrench, RotateCcw, Square,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -152,6 +152,8 @@ function FileCard({ file, expanded, onToggle }: {
   const pagesDone  = file.pagesCompleted ?? 0;
   const [resetting, setResetting] = useState(false);
   const [resetDone, setResetDone] = useState(false);
+  const [stopping, setStopping]   = useState(false);
+  const [stopped, setStopped]     = useState(false);
 
   async function handleReset(e: React.MouseEvent) {
     e.stopPropagation();
@@ -168,6 +170,24 @@ function FileCard({ file, expanded, onToggle }: {
       // silent — Firestore listener will reflect the change
     } finally {
       setResetting(false);
+    }
+  }
+
+  async function handleStop(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!window.confirm(`Stop processing "${file.fileName ?? file.fileId}"?\n\nThis will mark the file as stopped. You can reset it later to reprocess.`)) return;
+    setStopping(true);
+    try {
+      await fetch('/api/reset-stuck-file', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileId: file.fileId, action: 'stop' }),
+      });
+      setStopped(true);
+    } catch {
+      // silent
+    } finally {
+      setStopping(false);
     }
   }
 
@@ -197,22 +217,49 @@ function FileCard({ file, expanded, onToggle }: {
             {formatDate(file.updatedAt ?? file.detectedAt)}
           </p>
         </div>
-        <StatusBadge status={file.status} />
-        {/* Reset button — only shown for processing files that may be stuck */}
-        {file.status === 'processing' && (
-          <button
-            onClick={handleReset}
-            disabled={resetting || resetDone}
-            title="Reset stuck file — will be reprocessed"
-            className="p-1 rounded-lg transition-colors flex-shrink-0"
-            style={{ color: resetDone ? '#22c55e' : '#94a3b8' }}
-          >
-            {resetting
-              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              : resetDone
-                ? <CheckCircle2 className="w-3.5 h-3.5" />
-                : <RotateCcw className="w-3.5 h-3.5" />}
-          </button>
+        <StatusBadge status={stopped ? 'error' : file.status} />
+        {/* Buttons — only shown for processing files */}
+        {file.status === 'processing' && !stopped && (
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {/* Reset — try again from scratch */}
+            <button
+              onClick={handleReset}
+              disabled={resetting || resetDone || stopping}
+              title="Reset — clear stuck status and reprocess"
+              className="p-1.5 rounded-lg transition-colors flex items-center gap-1"
+              style={{
+                background: resetDone ? '#f0fdf4' : '#f1f5f9',
+                color: resetDone ? '#22c55e' : '#64748b',
+                border: `1px solid ${resetDone ? '#bbf7d0' : '#e2e8f0'}`,
+              }}
+            >
+              {resetting
+                ? <Loader2 className="w-3 h-3 animate-spin" />
+                : resetDone
+                  ? <CheckCircle2 className="w-3 h-3" />
+                  : <RotateCcw className="w-3 h-3" />}
+              <span className="font-inter text-xs">
+                {resetDone ? 'Reset' : 'Reset'}
+              </span>
+            </button>
+            {/* Stop — abandon processing */}
+            <button
+              onClick={handleStop}
+              disabled={stopping || resetting}
+              title="Stop — abandon processing this file"
+              className="p-1.5 rounded-lg transition-colors flex items-center gap-1"
+              style={{
+                background: '#fef2f2',
+                color: '#ef4444',
+                border: '1px solid #fecaca',
+              }}
+            >
+              {stopping
+                ? <Loader2 className="w-3 h-3 animate-spin" />
+                : <Square className="w-3 h-3" />}
+              <span className="font-inter text-xs">Stop</span>
+            </button>
+          </div>
         )}
         <span style={{ color: '#94a3b8' }}>
           {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
