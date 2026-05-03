@@ -564,8 +564,6 @@ const PIPELINE_STAGES = [
   { id: 'drive',  label: 'File to\nDrive'     },
 ];
 
-// State for a stage card: 'idle' | 'active' | 'done'
-type StageState = 'idle' | 'active' | 'done';
 
 function PipelineStageCards({ files, processingCount }: {
   files: FileStatus[];
@@ -818,7 +816,7 @@ type FilterType = 'all' | 'processing' | 'complete' | 'error' | 'unprocessed' | 
 export default function PDFRouterStatus() {
   const [files, setFiles]           = useState<FileStatus[]>([]);
   const [errors, setErrors]         = useState<RouterError[]>([]);
-  const [activity, setActivity]     = useState<ActivityEntry[]>([]);
+  const [_activity, setActivity]     = useState<ActivityEntry[]>([]);
   const [loading, setLoading]       = useState(true);
   const [connected, setConnected]   = useState(false);
   const [filter, setFilter]         = useState<FilterType>('all');
