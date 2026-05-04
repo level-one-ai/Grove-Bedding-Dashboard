@@ -43,6 +43,10 @@ interface FileStatus {
   oneDriveProcessedFolderUrl?: string;
   renamedFiles?: string[];
   updatedAt?: { seconds: number } | string;
+  // Stage tracking — written by scan-now.js and file-page.js
+  currentStage?: string;
+  currentPage?: number;
+  queuedReason?: string;
   [key: string]: unknown;
 }
 
@@ -228,7 +232,7 @@ function FileCard({ file, expanded, onToggle }: {
           </p>
           <p className="font-inter text-xs mt-0.5 flex items-center gap-1.5" style={{ color: '#94a3b8' }}>
             <span>{formatDate(file.updatedAt ?? file.detectedAt)}</span>
-            {file.status === 'processing' && (file as unknown as Record<string, unknown>).currentStage && (
+            {file.status === 'processing' && file.currentStage && (
               <>
                 <span style={{ color: '#cbd5e1' }}>·</span>
                 <span
@@ -243,9 +247,9 @@ function FileCard({ file, expanded, onToggle }: {
                     className="w-1 h-1 rounded-full"
                     style={{ background: '#f97316', animation: 'pulse 1.5s infinite' }}
                   />
-                  {STAGE_LABELS[(file as unknown as Record<string, string>).currentStage] || (file as unknown as Record<string, string>).currentStage}
-                  {(file as unknown as Record<string, number>).currentPage && file.totalPages
-                    ? ` · page ${(file as unknown as Record<string, number>).currentPage}/${file.totalPages}`
+                  {STAGE_LABELS[file.currentStage] || file.currentStage}
+                  {file.currentPage && file.totalPages
+                    ? ` · page ${file.currentPage}/${file.totalPages}`
                     : ''}
                 </span>
               </>
@@ -606,7 +610,7 @@ function PipelineStageCards({ files, processingCount }: {
 }) {
   // Find the most recently active processing file's current stage
   const activeFile = files.find(f => f.status === 'processing');
-  const currentStage = (activeFile as unknown as Record<string, unknown>)?.currentStage as string | undefined;
+  const currentStage = activeFile?.currentStage;
   const activeStageId = currentStage ? STAGE_MAP[currentStage] ?? null : null;
   const activeStageIdx = activeStageId ? PIPELINE_STAGES.findIndex(s => s.id === activeStageId) : -1;
 
