@@ -106,6 +106,19 @@ function statusLabel(status: string): string {
   }
 }
 
+// Friendly labels for the currentStage field shown inline on each file card
+const STAGE_LABELS: Record<string, string> = {
+  downloading:  'Downloading',
+  splitting:    'Splitting PDF',
+  dispatching:  'Sending to Make.com',
+  extracting:   'Extracting',
+  cin7:         'Looking up Cin7',
+  filing:       'Naming file',
+  uploading:    'Uploading',
+  non_order:    'Non-order page',
+  complete:     'Finishing',
+};
+
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
@@ -213,8 +226,30 @@ function FileCard({ file, expanded, onToggle }: {
           <p className="font-inter text-sm font-medium truncate" style={{ color: '#1e293b' }}>
             {file.fileName ?? file.fileId}
           </p>
-          <p className="font-inter text-xs mt-0.5" style={{ color: '#94a3b8' }}>
-            {formatDate(file.updatedAt ?? file.detectedAt)}
+          <p className="font-inter text-xs mt-0.5 flex items-center gap-1.5" style={{ color: '#94a3b8' }}>
+            <span>{formatDate(file.updatedAt ?? file.detectedAt)}</span>
+            {file.status === 'processing' && (file as unknown as Record<string, unknown>).currentStage && (
+              <>
+                <span style={{ color: '#cbd5e1' }}>·</span>
+                <span
+                  className="font-inter text-xs px-1.5 py-0.5 rounded inline-flex items-center gap-1"
+                  style={{
+                    background: '#fff7ed',
+                    color: '#c2410c',
+                    border: '1px solid #fed7aa',
+                  }}
+                >
+                  <span
+                    className="w-1 h-1 rounded-full"
+                    style={{ background: '#f97316', animation: 'pulse 1.5s infinite' }}
+                  />
+                  {STAGE_LABELS[(file as unknown as Record<string, string>).currentStage] || (file as unknown as Record<string, string>).currentStage}
+                  {(file as unknown as Record<string, number>).currentPage && file.totalPages
+                    ? ` · page ${(file as unknown as Record<string, number>).currentPage}/${file.totalPages}`
+                    : ''}
+                </span>
+              </>
+            )}
           </p>
         </div>
         <StatusBadge status={stopped ? 'error' : file.status} />
