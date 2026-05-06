@@ -50,6 +50,19 @@ interface FileStatus {
   [key: string]: unknown;
 }
 
+// Per-page data written into pdfRouterStatus by file-page.js as page_${n}
+interface PageInfo {
+  status?: 'complete' | string;
+  finalFileName?: string;
+  customerName?: string;
+  ref?: string;
+  oneDriveUrl?: string | null;
+  oneDriveId?: string | null;
+  googleDriveUrl?: string | null;
+  googleDriveFileId?: string | null;
+  reprocessedAt?: string;
+}
+
 interface RouterError {
   fileId: string;
   type: string;
@@ -171,6 +184,56 @@ function FileCard({ file, expanded, onToggle }: {
   const [resetDone, setResetDone] = useState(false);
   const [stopping, setStopping]   = useState(false);
   const [stopped, setStopped]     = useState(false);
+  const [reprocessingPage, setReprocessingPage] = useState<number | null>(null);
+  const [reprocessAllRunning, setReprocessAllRunning] = useState(false);
+
+  async function handleReprocessPage(e: React.MouseEvent, pageNumber: number) {
+    e.stopPropagation();
+    if (!window.confirm(`Reprocess page ${pageNumber}?\n\nThe current file will be moved to the OneDrive Recycle Bin and replaced with a re-extracted version.`)) return;
+    setReprocessingPage(pageNumber);
+    try {
+      const res = await fetch('/api/reprocess-page', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileId: file.fileId, pageNumber }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        window.alert(`Reprocess failed: ${data.error || 'Unknown error'}`);
+      } else if (data.status === 'no_change') {
+        window.alert(`Page ${pageNumber} is already filed correctly — no changes made.`);
+      }
+    } catch (err) {
+      window.alert(`Reprocess failed: ${(err as Error).message}`);
+    } finally {
+      setReprocessingPage(null);
+    }
+  }
+
+  async function handleReprocessAll(e: React.MouseEvent) {
+    e.stopPropagation();
+    const typed = window.prompt(`Reprocess ALL pages of "${file.fileName ?? file.fileId}"?\n\nThis will re-extract every page and replace the existing files.\n\nType REPROCESS to confirm:`);
+    if (typed !== 'REPROCESS') return;
+    setReprocessAllRunning(true);
+    try {
+      const res = await fetch('/api/reprocess-file', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileId: file.fileId, confirm: 'REPROCESS' }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        window.alert(`Reprocess all failed: ${data.error || 'Unknown error'}`);
+      } else {
+        const s = data.summary || {};
+        window.alert(`Reprocess complete:\n• Reprocessed: ${s.reprocessed ?? 0}\n• No change: ${s.noChange ?? 0}\n• Skipped: ${s.skipped ?? 0}\n• Failed: ${s.failed ?? 0}`);
+      }
+    } catch (err) {
+      window.alert(`Reprocess all failed: ${(err as Error).message}`);
+    } finally {
+      setReprocessAllRunning(false);
+    }
+  }
 
   async function handleReset(e: React.MouseEvent) {
     e.stopPropagation();
@@ -391,15 +454,114 @@ function FileCard({ file, expanded, onToggle }: {
               </div>
             </div>
 
-            {file.renamedFiles && file.renamedFiles.length > 0 && (
+            {file.status === 'complete' && file.totalPages && file.totalPages > 0 && (
               <div>
-                <p className="font-inter text-xs font-medium mb-1" style={{ color: '#64748b' }}>Processed files:</p>
-                <div className="space-y-0.5">
-                  {file.renamedFiles.map((name, i) => (
-                    <p key={i} className="font-mono text-xs px-2 py-0.5 rounded" style={{ background: '#f8fafc', color: '#475569' }}>
-                      {name}
-                    </p>
-                  ))}
+                <div className="flex items-center justify-between mb-2">
+                  <p className="font-inter text-xs font-medium" style={{ color: '#64748b' }}>Processed pages:</p>
+                  <button
+                    onClick={handleReprocessAll}
+                    disabled={reprocessAllRunning}
+                    className="font-inter text-xs font-medium px-2 py-1 rounded transition-colors"
+                    style={{
+                      background: reprocessAllRunning ? '#f1f5f9' : '#fef3c7',
+                      color: reprocessAllRunning ? '#94a3b8' : '#92400e',
+                      border: '1px solid #fde68a',
+                      cursor: reprocessAllRunning ? 'wait' : 'pointer',
+                    }}
+                    title="Reprocess every page of this file"
+                  >
+                    {reprocessAllRunning ? 'Reprocessing all…' : 'Reprocess all pages'}
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {Array.from({ length: file.totalPages }, (_, i) => i + 1).map(pageNumber => {
+                    const pageInfo = file[`page_${pageNumber}`] as PageInfo | undefined;
+                    const isReprocessing = reprocessingPage === pageNumber;
+                    const fileName = pageInfo?.finalFileName || `Page ${pageNumber}`;
+                    const customerName = pageInfo?.customerName || '—';
+                    const ref = pageInfo?.ref;
+                    const oneDriveUrl = pageInfo?.oneDriveUrl;
+                    const googleDriveUrl = pageInfo?.googleDriveUrl;
+
+                    return (
+                      <div
+                        key={pageNumber}
+                        className="rounded-lg p-2.5"
+                        style={{
+                          background: pageInfo ? '#f0fdf4' : '#f8fafc',
+                          border: pageInfo ? '1px solid #bbf7d0' : '1px solid #e2e8f0',
+                        }}
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span
+                                className="font-inter text-xs font-semibold px-1.5 py-0.5 rounded"
+                                style={{ background: '#dcfce7', color: '#15803d' }}
+                              >
+                                Page {pageNumber}
+                              </span>
+                              <span className="font-inter text-xs font-medium truncate" style={{ color: '#1e293b' }}>
+                                {customerName}
+                              </span>
+                              {ref && (
+                                <span className="font-mono text-xs" style={{ color: '#64748b' }}>
+                                  {ref}
+                                </span>
+                              )}
+                            </div>
+                            <p className="font-mono text-xs truncate" style={{ color: '#475569' }} title={fileName}>
+                              {fileName}
+                            </p>
+                          </div>
+                          <button
+                            onClick={(e) => handleReprocessPage(e, pageNumber)}
+                            disabled={isReprocessing || !pageInfo?.oneDriveId}
+                            className="font-inter text-xs font-medium px-2 py-1 rounded transition-colors flex-shrink-0"
+                            style={{
+                              background: isReprocessing ? '#f1f5f9' : (!pageInfo?.oneDriveId ? '#f1f5f9' : '#dbeafe'),
+                              color: isReprocessing ? '#94a3b8' : (!pageInfo?.oneDriveId ? '#cbd5e1' : '#1e40af'),
+                              border: '1px solid #bfdbfe',
+                              cursor: isReprocessing || !pageInfo?.oneDriveId ? 'not-allowed' : 'pointer',
+                            }}
+                            title={!pageInfo?.oneDriveId ? 'Cannot reprocess — no OneDrive ID stored for this page' : 'Reprocess this page'}
+                          >
+                            {isReprocessing ? 'Reprocessing…' : 'Reprocess'}
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-3 mt-1.5">
+                          {oneDriveUrl ? (
+                            <a
+                              href={oneDriveUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 font-inter text-xs font-medium"
+                              style={{ color: '#0ea5e9' }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <FolderOpen className="w-3 h-3" /> OneDrive <ExternalLink className="w-2.5 h-2.5" />
+                            </a>
+                          ) : (
+                            <span className="font-inter text-xs" style={{ color: '#94a3b8' }}>OneDrive: —</span>
+                          )}
+                          {googleDriveUrl ? (
+                            <a
+                              href={googleDriveUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 font-inter text-xs font-medium"
+                              style={{ color: '#0ea5e9' }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <CloudUpload className="w-3 h-3" /> Drive <ExternalLink className="w-2.5 h-2.5" />
+                            </a>
+                          ) : (
+                            <span className="font-inter text-xs" style={{ color: '#94a3b8' }}>Drive: —</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
