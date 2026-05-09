@@ -67,6 +67,18 @@
       "destination": "/api/reset-stuck-file.cjs"
     },
     {
+      "source": "/api/run-diag",
+      "destination": "/api/run-diag.cjs"
+    },
+    {
+      "source": "/api/reprocess-page",
+      "destination": "/api/reprocess-page.cjs"
+    },
+    {
+      "source": "/api/reprocess-file",
+      "destination": "/api/reprocess-file.cjs"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
