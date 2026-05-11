@@ -212,8 +212,8 @@ function FileCard({ file, expanded, onToggle }: {
 
   async function handleReprocessAll(e: React.MouseEvent) {
     e.stopPropagation();
-    const typed = window.prompt(`Reprocess ALL pages of "${file.fileName ?? file.fileId}"?\n\nThis will re-extract every page and replace the existing files.\n\nType REPROCESS to confirm:`);
-    if (typed !== 'REPROCESS') return;
+    const ok = window.confirm(`Reprocess ALL pages of "${file.fileName ?? file.fileId}"?\n\nThis will re-extract every page and replace the existing files.`);
+    if (!ok) return;
     setReprocessAllRunning(true);
     try {
       const res = await fetch('/api/reprocess-file', {
