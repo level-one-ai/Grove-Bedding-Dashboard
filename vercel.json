@@ -103,14 +103,5 @@
       "src": "pdf-router-connection/api/*.cjs",
       "use": "@vercel/node"
     }
-  ],
-  "functions": {
-    "api/reprocess-file.cjs": {
-      "maxDuration": 800
-    },
-    "api/reprocess-page.cjs": {
-      "maxDuration": 300
-    }
-  }
+  ]
 }
-
