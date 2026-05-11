@@ -233,3 +233,4 @@ src/
 | `VITE_FIREBASE_APP_ID` | Firebase app ID |
 
 Copy `.env.example` to `.env.local` and populate these before running in production.
+
