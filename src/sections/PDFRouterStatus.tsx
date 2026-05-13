@@ -184,6 +184,8 @@ function FileCard({ file, expanded, onToggle }: {
   const [resetDone, setResetDone] = useState(false);
   const [stopping, setStopping]   = useState(false);
   const [stopped, setStopped]     = useState(false);
+  const [restarting, setRestarting] = useState(false);
+  const [restarted, setRestarted]   = useState(false);
   const [reprocessingPage, setReprocessingPage] = useState<number | null>(null);
   const [reprocessAllRunning, setReprocessAllRunning] = useState(false);
 
@@ -268,6 +270,24 @@ function FileCard({ file, expanded, onToggle }: {
       // silent
     } finally {
       setStopping(false);
+    }
+  }
+
+  async function handleRestart(e: React.MouseEvent) {
+    e.stopPropagation();
+    setRestarting(true);
+    try {
+      await fetch('/api/reset-stuck-file', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileId: file.fileId, action: 'reset' }),
+      });
+      setRestarted(true);
+      setTimeout(() => setRestarted(false), 3000);
+    } catch {
+      // silent
+    } finally {
+      setRestarting(false);
     }
   }
 
@@ -361,6 +381,42 @@ function FileCard({ file, expanded, onToggle }: {
                 : <Square className="w-3 h-3" />}
               <span className="font-inter text-xs">Stop</span>
             </button>
+          </div>
+        )}
+        {/* Restart — appears for stopped/error files so they're not stuck */}
+        {(file.status === 'error' || stopped) && !restarted && (
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button
+              onClick={handleRestart}
+              disabled={restarting}
+              title="Restart — clear stopped state and reprocess from scratch"
+              className="p-1.5 rounded-lg transition-colors flex items-center gap-1"
+              style={{
+                background: '#f0fdf4',
+                color: '#15803d',
+                border: '1px solid #bbf7d0',
+              }}
+            >
+              {restarting
+                ? <Loader2 className="w-3 h-3 animate-spin" />
+                : <Play className="w-3 h-3" />}
+              <span className="font-inter text-xs">Restart</span>
+            </button>
+          </div>
+        )}
+        {restarted && (
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <span
+              className="p-1.5 rounded-lg flex items-center gap-1"
+              style={{
+                background: '#f0fdf4',
+                color: '#15803d',
+                border: '1px solid #bbf7d0',
+              }}
+            >
+              <CheckCircle2 className="w-3 h-3" />
+              <span className="font-inter text-xs">Restarted</span>
+            </span>
           </div>
         )}
         <span style={{ color: '#94a3b8' }}>
@@ -604,7 +660,11 @@ function UnprocessedCard({ file, triggering, triggered, onTrigger }: {
         {/* Status dot — indigo for unprocessed */}
         <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: '#6366f1' }} />
         <div className="flex-1 min-w-0">
-          <p className="font-inter text-sm font-medium truncate" style={{ color: '#1e293b' }}>
+          <p
+            className="font-inter text-sm font-medium truncate"
+            style={{ color: '#1e293b' }}
+            title={file.name}
+          >
             {file.name}
           </p>
           <p className="font-inter text-xs mt-0.5" style={{ color: '#94a3b8' }}>
@@ -659,7 +719,12 @@ function UnprocessedFilesView() {
       const res  = await fetch('/api/scans-list');
       const data = await res.json();
       if (!data.success) throw new Error(data.error || 'Failed to list Scans folder');
-      setFiles(data.files || []);
+      // Sort newest first so most recent scans appear at the top
+      const sorted = (data.files || []).sort(
+        (a: ScansFile, b: ScansFile) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      setFiles(sorted);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
