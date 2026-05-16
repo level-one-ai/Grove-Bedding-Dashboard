@@ -89,6 +89,10 @@
         {
             "source": "/api/cin7-so-probe",
             "destination": "/api/cin7-so-probe.cjs"
+        },
+        {
+            "source": "/api/cin7-crm-probe",
+            "destination": "/api/cin7-crm-probe.cjs"
         }
     ],
     "builds": [
