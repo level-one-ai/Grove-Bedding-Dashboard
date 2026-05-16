@@ -93,6 +93,10 @@
         {
             "source": "/api/cin7-crm-probe",
             "destination": "/api/cin7-crm-probe.cjs"
+        },
+        {
+            "source": "/api/cin7-member-orders",
+            "destination": "/api/cin7-member-orders.cjs"
         }
     ],
     "builds": [
