@@ -85,6 +85,10 @@
         {
             "source": "/api/cin7-po-fields",
             "destination": "/api/cin7-po-fields.cjs"
+        },
+        {
+            "source": "/api/cin7-so-probe",
+            "destination": "/api/cin7-so-probe.cjs"
         }
     ],
     "builds": [
