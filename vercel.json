@@ -97,6 +97,10 @@
         {
             "source": "/api/cin7-member-orders",
             "destination": "/api/cin7-member-orders.cjs"
+        },
+        {
+            "source": "/api/cin7-field-probe",
+            "destination": "/api/cin7-field-probe.cjs"
         }
     ],
     "builds": [
